@@ -337,6 +337,11 @@
             border-radius: 9px;
         }
 
+        .device-item.active-device {
+            border-color: rgba(49, 209, 132, 0.5);
+            background: rgba(49, 209, 132, 0.07);
+        }
+
         .device-title {
             display: flex;
             align-items: center;
@@ -682,6 +687,17 @@
     <!-- Dashboard -->
     <section id="view-dashboard" class="view active">
         <div id="room-dashboard" class="grid dashboard-grid"></div>
+
+        <div class="panel" style="margin-top: 18px;">
+            <h2>Registered Device Activity</h2>
+            <p class="help">
+                Current status of all server-registered sensors and actuators.
+            </p>
+
+            <div id="device-activity-list" class="device-list">
+                <p class="empty">Loading registered devices …</p>
+            </div>
+        </div>
 
         <div class="panel" style="margin-top: 18px;">
             <h2>System Events</h2>
@@ -1061,7 +1077,10 @@
             const state = await stateResponse.json();
             const events = await eventsResponse.json();
 
-            ROOMS.forEach(room => updateRoomDashboard(room, state.topics || {}));
+            const topics = state.topics || {};
+
+            ROOMS.forEach(room => updateRoomDashboard(room, topics));
+            renderDeviceActivity(topics);
             updateEvents(events);
 
             document.getElementById("connection-dot").className = "dot online";
@@ -1149,7 +1168,8 @@
         const list = document.getElementById("device-list");
 
         if (!devices.length) {
-            list.innerHTML = `<p class="empty">No dynamic devices have been added yet.</p>`;
+            list.innerHTML =
+                `<p class="empty">No dynamic devices have been added yet.</p>`;
             return;
         }
 
@@ -1157,21 +1177,217 @@
             <div class="device-item">
                 <div>
                     <div class="device-title">
-                        <span class="badge ${device.kind}">${escapeHtml(device.kind)}</span>
+                        <span class="badge ${device.kind}">
+                            ${escapeHtml(device.kind)}
+                        </span>
+
                         ${escapeHtml(device.name)}
                     </div>
 
                     <div class="device-topic">
-                        ${escapeHtml(device.room_id)} · ${escapeHtml(device.device_type)}<br>
+                        ${escapeHtml(device.room_id)} ·
+                        ${escapeHtml(device.device_type)}<br>
                         ${escapeHtml(device.mqtt_topic)}
                     </div>
                 </div>
 
-                <button class="danger small" onclick="deleteDevice('${device.id}')">
+                <button
+                    class="danger small"
+                    onclick="deleteDevice('${device.id}')"
+                >
                     Delete
                 </button>
             </div>
         `).join("");
+    }
+
+    function findDeviceAvailability(device, topics) {
+        return getValue(
+            topics,
+            `building/main/device/${device.id}/availability`,
+            "status",
+            "unknown"
+        );
+    }
+
+    function findDeviceMessage(device, topics) {
+        // Sensor topics already point directly to their latest telemetry topic.
+        if (device.kind === "sensor") {
+            return getTopic(topics, device.mqtt_topic);
+        }
+
+        // Actuator devices are registered with their command topic.
+        // The actual confirmed status comes from the corresponding state topic.
+        if (device.kind === "actuator") {
+            const stateTopic = device.mqtt_topic.replace(
+                "/command",
+                "/state"
+            );
+
+            return getTopic(topics, stateTopic);
+        }
+
+        return null;
+    }
+
+    function getSensorActivityText(device, message) {
+        if (!message) {
+            return "No telemetry received";
+        }
+
+        const value = message.value || {};
+
+        switch (device.device_type) {
+            case "temperature":
+                return value.temperature_c !== undefined
+                    ? `${value.temperature_c} °C`
+                    : "Waiting for temperature";
+
+            case "humidity":
+                return value.humidity_percent !== undefined
+                    ? `${value.humidity_percent} % humidity`
+                    : "Waiting for humidity";
+
+            case "co2":
+                return value.co2_ppm !== undefined
+                    ? `${value.co2_ppm} ppm CO₂`
+                    : "Waiting for CO₂";
+
+            case "occupancy":
+                if (value.occupied === true) return "Occupancy detected";
+                if (value.occupied === false) return "Room is empty";
+                return "Waiting for occupancy";
+
+            default:
+                return JSON.stringify(value);
+        }
+    }
+
+    function getActuatorActivityText(device, message) {
+        if (!message) {
+            return "No confirmed actuator state";
+        }
+
+        const value = message.value || {};
+        const enabled = value.enabled === true;
+        const power = value.power_percent ?? 0;
+        const mode = value.mode ?? "unknown";
+
+        if (!enabled) {
+            return `OFF · mode: ${mode}`;
+        }
+
+        return `ON · ${power}% power · mode: ${mode}`;
+    }
+
+    function formatMessageTime(message) {
+        if (!message?.timestamp) {
+            return "No message received";
+        }
+
+        const date = new Date(message.timestamp);
+
+        if (Number.isNaN(date.getTime())) {
+            return "Unknown message time";
+        }
+
+        return `Last update: ${date.toLocaleTimeString()}`;
+    }
+
+    function renderDeviceActivity(topics) {
+        const container = document.getElementById("device-activity-list");
+
+        if (!container) {
+            return;
+        }
+
+        if (!devices.length) {
+            container.innerHTML = `
+                <p class="empty">
+                    No registered devices. Add sensors or actuators in the Devices tab.
+                </p>
+            `;
+            return;
+        }
+
+        container.innerHTML = devices.map(device => {
+            const availability = findDeviceAvailability(device, topics);
+            const message = findDeviceMessage(device, topics);
+
+            const isOnline = availability === "online";
+            const isOffline = availability === "offline";
+
+            const activity = device.kind === "sensor"
+                ? getSensorActivityText(device, message)
+                : getActuatorActivityText(device, message);
+
+            const actuatorEnabled =
+                device.kind === "actuator" &&
+                message?.value?.enabled === true;
+
+            const statusLabel = isOnline
+                ? "ONLINE"
+                : isOffline
+                    ? "OFFLINE"
+                    : "UNKNOWN";
+
+            return `
+                <div class="device-item ${actuatorEnabled ? "active-device" : ""}">
+                    <div>
+                        <div class="device-title">
+                            <span class="badge ${device.kind}">
+                                ${escapeHtml(device.kind)}
+                            </span>
+
+                            <span
+                                class="dot ${
+                                    isOnline
+                                        ? "online"
+                                        : isOffline
+                                            ? "offline"
+                                            : ""
+                                }"
+                                style="display:inline-block;"
+                            ></span>
+
+                            ${escapeHtml(device.name)}
+                        </div>
+
+                        <div class="device-topic">
+                            <strong>${statusLabel}</strong> ·
+                            ${escapeHtml(device.room_id)} ·
+                            ${escapeHtml(device.device_type)}<br>
+
+                            ${escapeHtml(activity)}<br>
+
+                            ${escapeHtml(formatMessageTime(message))}<br>
+
+                            ${escapeHtml(device.mqtt_topic)}
+                        </div>
+                    </div>
+
+                    <div style="text-align:right;">
+                        ${
+                            device.kind === "actuator"
+                                ? `
+                                    <strong style="color:${
+                                        actuatorEnabled
+                                            ? "var(--green)"
+                                            : "var(--muted)"
+                                    }">
+                                        ${actuatorEnabled ? "ACTIVE" : "IDLE"}
+                                    </strong>
+                                `
+                                : `
+                                    <strong style="color:var(--blue);">
+                                        SENSING
+                                    </strong>
+                                `
+                        }
+                    </div>
+                </div>
+            `;
+        }).join("");
     }
 
     async function deleteDevice(deviceId) {
@@ -1794,12 +2010,17 @@
     /* Initialisation                                                         */
     /* ---------------------------------------------------------------------- */
 
-    setupDashboard();
-    updateDeviceTypeOptions();
-    refreshDashboard();
-    loadDevices();
+    async function initialiseApplication() {
+        setupDashboard();
+        updateDeviceTypeOptions();
 
-    window.setInterval(refreshDashboard, 2000);
+        await loadDevices();
+        await refreshDashboard();
+
+        window.setInterval(refreshDashboard, 2000);
+    }
+
+    initialiseApplication();
 </script>
 </body>
 </html>
