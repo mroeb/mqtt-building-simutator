@@ -114,7 +114,7 @@ async fn execute_blueprint(
             ]),
         };
 
-        if let Err(error) = client
+        match client
             .publish(
                 &device.mqtt_topic,
                 QoS::AtLeastOnce,
@@ -123,10 +123,25 @@ async fn execute_blueprint(
             )
             .await
         {
-            eprintln!(
-                "Blueprint '{}' could not publish actuator command: {error}",
-                blueprint.name
-            );
+            Ok(()) => {
+                // Publish a dashboard-visible event only after the MQTT command
+                // was successfully queued for publication.
+                publish_blueprint_event(
+                    client,
+                    blueprint,
+                    &device.room_id,
+                    &device.device_type,
+                    enabled,
+                )
+                .await;
+            }
+
+            Err(error) => {
+                eprintln!(
+                    "Blueprint '{}' could not publish actuator command: {error}",
+                    blueprint.name
+                );
+            }
         }
     }
 }
@@ -218,4 +233,38 @@ fn extract_sensor_value(message: &MqttMessage) -> Option<Value> {
     }
 
     None
+}
+
+async fn publish_blueprint_event(
+    client: &AsyncClient,
+    blueprint: &Blueprint,
+    room_id: &str,
+    actuator: &str,
+    enabled: bool,
+) {
+    let event = MqttMessage {
+        timestamp: chrono::Utc::now(),
+        device_id: format!("blueprint-{}", blueprint.id),
+        room_id: Some(room_id.to_string()),
+        message_type: "blueprint_execution".to_string(),
+        value: json!({
+            "actuator": actuator,
+            "enabled": enabled
+        }),
+        metadata: Map::from_iter([
+            ("blueprint_id".to_string(), json!(blueprint.id)),
+            ("blueprint_name".to_string(), json!(blueprint.name)),
+        ]),
+    };
+
+    let topic = format!("building/{BUILDING_ID}/room/{room_id}/event");
+
+    let _ = client
+        .publish(
+            topic,
+            QoS::AtLeastOnce,
+            false,
+            serde_json::to_vec(&event).unwrap(),
+        )
+        .await;
 }

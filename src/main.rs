@@ -13,7 +13,9 @@ use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
 use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
 
-use blueprints::{Blueprint, BlueprintStore, Device, DeviceKind};
+use blueprints::{
+    Blueprint, BlueprintEdge, BlueprintNode, BlueprintStore, Device, DeviceKind, NodePosition,
+};
 use storage::{load_store, save_store};
 
 const BUILDING_ID: &str = "main";
@@ -50,8 +52,8 @@ struct RoomConfigInput {
     target_temperature_c: Option<f64>,
     energy_saving: Option<bool>,
     manual_mode: Option<bool>,
+    blueprint_mode: Option<bool>,
 }
-
 #[derive(Debug, Deserialize)]
 struct CreateDeviceInput {
     room_id: String,
@@ -193,11 +195,251 @@ async fn delete_blueprint(
     Ok(Json(json!({ "status": "deleted" })))
 }
 
+fn default_sensor_device(room: &str, name: &str, device_type: &str) -> Device {
+    Device {
+        id: format!("{room}-sensor-{device_type}"),
+        room_id: room.to_string(),
+        name: format!("{name} ({room})"),
+        kind: DeviceKind::Sensor,
+        device_type: device_type.to_string(),
+        mqtt_topic: format!("building/{BUILDING_ID}/room/{room}/sensor/{device_type}"),
+        enabled: true,
+    }
+}
+
+fn default_actuator_device(room: &str, name: &str, device_type: &str) -> Device {
+    Device {
+        id: format!("{room}-actuator-{device_type}"),
+        room_id: room.to_string(),
+        name: format!("{name} ({room})"),
+        kind: DeviceKind::Actuator,
+        device_type: device_type.to_string(),
+        mqtt_topic: format!("building/{BUILDING_ID}/room/{room}/actuator/{device_type}/command"),
+        enabled: true,
+    }
+}
+
+fn edge(
+    id: &str,
+    source: &str,
+    source_handle: &str,
+    target: &str,
+    target_handle: &str,
+) -> BlueprintEdge {
+    BlueprintEdge {
+        id: id.to_string(),
+        source: source.to_string(),
+        source_handle: source_handle.to_string(),
+        target: target.to_string(),
+        target_handle: target_handle.to_string(),
+    }
+}
+
+fn node(id: &str, node_type: &str, x: f64, y: f64, data: Value) -> BlueprintNode {
+    BlueprintNode {
+        id: id.to_string(),
+        node_type: node_type.to_string(),
+        position: NodePosition { x, y },
+        data,
+    }
+}
+
+/// Adds the simulated devices and example scripts if they are missing.
+/// Existing user-created scripts and devices remain untouched.
+fn ensure_default_blueprint_content(store: &mut BlueprintStore) {
+    for room in ROOMS {
+        let defaults = [
+            default_sensor_device(room, "Temperature Sensor", "temperature"),
+            default_sensor_device(room, "Humidity Sensor", "humidity"),
+            default_sensor_device(room, "CO₂ Sensor", "co2"),
+            default_sensor_device(room, "Occupancy Sensor", "occupancy"),
+            default_actuator_device(room, "Heating", "heating"),
+            default_actuator_device(room, "Ventilation", "ventilation"),
+            default_actuator_device(room, "Lights", "lights"),
+        ];
+
+        for device in defaults {
+            if !store
+                .devices
+                .iter()
+                .any(|existing| existing.id == device.id)
+            {
+                store.devices.push(device);
+            }
+        }
+
+        let heating_script_id = format!("builtin-temperature-heating-{room}");
+
+        if !store
+            .blueprints
+            .iter()
+            .any(|script| script.id == heating_script_id)
+        {
+            store.blueprints.push(Blueprint {
+                id: heating_script_id,
+                name: format!("{room}: Heat when temperature is below 21.5 °C"),
+                enabled: true,
+                nodes: vec![
+                    node(
+                        "temperature-sensor",
+                        "sensor",
+                        80.0,
+                        120.0,
+                        json!({
+                            "device_id": format!("{room}-sensor-temperature")
+                        }),
+                    ),
+                    node(
+                        "temperature-limit",
+                        "constant_number",
+                        90.0,
+                        310.0,
+                        json!({ "value": 21.5 }),
+                    ),
+                    node("temperature-check", "compare_less", 390.0, 155.0, json!({})),
+                    node(
+                        "heating-output",
+                        "actuator",
+                        700.0,
+                        155.0,
+                        json!({
+                            "device_id": format!("{room}-actuator-heating")
+                        }),
+                    ),
+                ],
+                edges: vec![
+                    edge(
+                        "temperature-to-check",
+                        "temperature-sensor",
+                        "value",
+                        "temperature-check",
+                        "a",
+                    ),
+                    edge(
+                        "limit-to-check",
+                        "temperature-limit",
+                        "value",
+                        "temperature-check",
+                        "b",
+                    ),
+                    edge(
+                        "check-to-heating",
+                        "temperature-check",
+                        "result",
+                        "heating-output",
+                        "enabled",
+                    ),
+                ],
+            });
+        }
+
+        let lights_script_id = format!("builtin-occupancy-lights-{room}");
+
+        if !store
+            .blueprints
+            .iter()
+            .any(|script| script.id == lights_script_id)
+        {
+            store.blueprints.push(Blueprint {
+                id: lights_script_id,
+                name: format!("{room}: Turn lights on when occupied"),
+                enabled: true,
+                nodes: vec![
+                    node(
+                        "occupancy-sensor",
+                        "sensor",
+                        100.0,
+                        180.0,
+                        json!({
+                            "device_id": format!("{room}-sensor-occupancy")
+                        }),
+                    ),
+                    node(
+                        "lights-output",
+                        "actuator",
+                        480.0,
+                        180.0,
+                        json!({
+                            "device_id": format!("{room}-actuator-lights")
+                        }),
+                    ),
+                ],
+                edges: vec![edge(
+                    "occupancy-to-lights",
+                    "occupancy-sensor",
+                    "value",
+                    "lights-output",
+                    "enabled",
+                )],
+            });
+        }
+
+        let ventilation_script_id = format!("builtin-co2-ventilation-{room}");
+
+        if !store
+            .blueprints
+            .iter()
+            .any(|script| script.id == ventilation_script_id)
+        {
+            store.blueprints.push(Blueprint {
+                id: ventilation_script_id,
+                name: format!("{room}: Ventilate when CO₂ is above 1000 ppm"),
+                enabled: true,
+                nodes: vec![
+                    node(
+                        "co2-sensor",
+                        "sensor",
+                        80.0,
+                        120.0,
+                        json!({
+                            "device_id": format!("{room}-sensor-co2")
+                        }),
+                    ),
+                    node(
+                        "co2-limit",
+                        "constant_number",
+                        90.0,
+                        310.0,
+                        json!({ "value": 1000 }),
+                    ),
+                    node("co2-check", "compare_greater", 390.0, 155.0, json!({})),
+                    node(
+                        "ventilation-output",
+                        "actuator",
+                        700.0,
+                        155.0,
+                        json!({
+                            "device_id": format!("{room}-actuator-ventilation")
+                        }),
+                    ),
+                ],
+                edges: vec![
+                    edge("co2-to-check", "co2-sensor", "value", "co2-check", "a"),
+                    edge("co2-limit-to-check", "co2-limit", "value", "co2-check", "b"),
+                    edge(
+                        "co2-check-to-ventilation",
+                        "co2-check",
+                        "result",
+                        "ventilation-output",
+                        "enabled",
+                    ),
+                ],
+            });
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let dashboard_mqtt = create_client("dashboard-service", true);
 
     let mut saved_blueprints = load_store().await;
+
+    ensure_default_blueprint_content(&mut saved_blueprints);
+
+    if let Err(error) = save_store(&saved_blueprints).await {
+        eprintln!("Could not save default Blueprint devices/scripts: {error}");
+    }
 
     if saved_blueprints.devices.is_empty() {
         saved_blueprints = default_blueprint_store();
@@ -356,11 +598,13 @@ async fn sensor_simulator(room: String) {
         sequence += 1;
 
         // Deterministic simulation values; no additional random crate required.
-        let phase = sequence as f64 / 8.0;
+        let room_offset = if room == "room-101" { 0.0 } else { 2.7 };
+        let phase = sequence as f64 / 8.0 + room_offset;
         let temperature = 20.5 + phase.sin() * 1.8;
         let humidity = 42.0 + phase.cos() * 7.0;
         let co2 = 650.0 + (phase.sin() + 1.0) * 300.0;
-        let occupied = (sequence / 12) % 2 == 0;
+        let occupancy_offset = if room == "room-101" { 0 } else { 6 };
+        let occupied = ((sequence + occupancy_offset) / 12) % 2 == 0;
 
         publish_measurement(
             &client,
@@ -462,6 +706,7 @@ async fn controller_service(room: String) {
     let mut target_temperature = 22.0;
     let mut energy_saving = false;
     let mut manual_mode = false;
+    let mut blueprint_mode = true;
 
     loop {
         match event_loop.poll().await {
@@ -504,9 +749,13 @@ async fn controller_service(room: String) {
                     if let Some(value) = message.value["manual_mode"].as_bool() {
                         manual_mode = value;
                     }
+
+                    if let Some(value) = message.value["blueprint_mode"].as_bool() {
+                        blueprint_mode = value;
+                    }
                 }
 
-                if !manual_mode {
+                if !manual_mode && !blueprint_mode {
                     let effective_target = if energy_saving {
                         target_temperature - 1.0
                     } else {
@@ -818,7 +1067,8 @@ async fn update_room_config(
         value: json!({
             "target_temperature_c": input.target_temperature_c,
             "energy_saving": input.energy_saving,
-            "manual_mode": input.manual_mode
+            "manual_mode": input.manual_mode,
+            "blueprint_mode": input.blueprint_mode
         }),
         metadata: Map::from_iter([("source".to_string(), json!("dashboard"))]),
     };

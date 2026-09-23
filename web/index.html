@@ -1309,9 +1309,13 @@
     }
 
     function findDeviceAvailability(device, topics) {
+        const simulatorId = device.kind === "sensor"
+            ? `sensor-${device.room_id}`
+            : `actuator-${device.room_id}`;
+
         return getValue(
             topics,
-            `building/main/device/${device.id}/availability`,
+            `building/main/device/${simulatorId}/availability`,
             "status",
             "unknown"
         );
