@@ -927,7 +927,7 @@ async fn actuator_simulator(room: String) {
                     continue;
                 };
 
-                let actuator = publish.topic.split('/').nth(6).unwrap_or("unknown");
+                let actuator = publish.topic.split('/').nth(5).unwrap_or("unknown");
 
                 let enabled = command.value["enabled"].as_bool().unwrap_or(false);
 
