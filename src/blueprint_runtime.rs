@@ -1,5 +1,5 @@
 use crate::{
-    BUILDING_ID, MqttMessage,
+    MqttMessage,
     blueprints::{Blueprint, BlueprintEdge, BlueprintNode, BlueprintStore, DeviceKind},
 };
 use rumqttc::{AsyncClient, QoS};
@@ -128,6 +128,7 @@ async fn execute_blueprint(
                 // was successfully queued for publication.
                 publish_blueprint_event(
                     client,
+                    store,
                     blueprint,
                     &device.room_id,
                     &device.device_type,
@@ -226,7 +227,16 @@ fn get_input_boolean(
 }
 
 fn extract_sensor_value(message: &MqttMessage) -> Option<Value> {
-    for field in ["temperature_c", "humidity_percent", "co2_ppm", "occupied"] {
+    for field in [
+        "temperature_c",
+        "humidity_percent",
+        "co2_ppm",
+        "occupied",
+        "motion_detected",
+        "illuminance_lux",
+        "power_w",
+        "energy_kwh",
+    ] {
         if let Some(value) = message.value.get(field) {
             return Some(value.clone());
         }
@@ -237,6 +247,7 @@ fn extract_sensor_value(message: &MqttMessage) -> Option<Value> {
 
 async fn publish_blueprint_event(
     client: &AsyncClient,
+    store: &BlueprintStore,
     blueprint: &Blueprint,
     room_id: &str,
     actuator: &str,
@@ -257,7 +268,11 @@ async fn publish_blueprint_event(
         ]),
     };
 
-    let topic = format!("building/{BUILDING_ID}/room/{room_id}/event");
+    let Some(floor_id) = store.building.floor_id_for_room(room_id) else {
+        return;
+    };
+
+    let topic = crate::topics::room_event(&floor_id, room_id);
 
     let _ = client
         .publish(

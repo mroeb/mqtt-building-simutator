@@ -263,7 +263,7 @@
 
         .actuators {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
             gap: 9px;
             margin-top: 16px;
         }
@@ -737,6 +737,211 @@
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
+
+        /* ------------------------------------------------------------------ */
+        /* Building editor                                                     */
+        /* ------------------------------------------------------------------ */
+
+        .inline-form {
+            display: flex;
+            gap: 9px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .inline-form input,
+        .inline-form select {
+            width: auto;
+            min-width: 160px;
+            flex: 1;
+        }
+
+        .floor-block {
+            margin-top: 18px;
+        }
+
+        .floor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .floor-header h2 {
+            margin: 0;
+        }
+
+        .room-tiles {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+            gap: 14px;
+        }
+
+        .room-tile {
+            padding: 14px;
+            background: rgba(0, 0, 0, 0.16);
+            border: 1px solid var(--border);
+            border-left: 6px solid var(--tile-color, var(--blue));
+            border-radius: 11px;
+        }
+
+        .room-tile-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .room-tile-head h3 {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .room-edit-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 9px;
+            margin-top: 12px;
+        }
+
+        .room-edit-grid label {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--muted);
+            font-size: 0.66rem;
+            text-transform: uppercase;
+        }
+
+        .room-edit-grid input,
+        .room-edit-grid select {
+            padding: 7px 8px;
+            font-size: 0.8rem;
+        }
+
+        .room-edit-grid input[type="color"] {
+            height: 34px;
+            padding: 3px;
+        }
+
+        /* ------------------------------------------------------------------ */
+        /* 3D simulation                                                       */
+        /* ------------------------------------------------------------------ */
+
+        .sim-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 9px;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sim-toolbar select {
+            width: auto;
+            min-width: 160px;
+        }
+
+        .sim-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-left: auto;
+            color: var(--muted);
+            font-size: 0.78rem;
+        }
+
+        .sim-stats strong {
+            color: var(--text);
+        }
+
+        #sim-scene {
+            position: relative;
+            height: 66vh;
+            min-height: 470px;
+            overflow: hidden;
+            background: #050d17;
+            border-radius: 0 0 13px 13px;
+        }
+
+        #sim-scene canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .sim-hud {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .sim-crosshair {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 16px;
+            height: 16px;
+            transform: translate(-50%, -50%);
+        }
+
+        .sim-crosshair::before,
+        .sim-crosshair::after {
+            content: "";
+            position: absolute;
+            background: rgba(255, 255, 255, 0.85);
+        }
+
+        .sim-crosshair::before {
+            left: 7px;
+            top: 0;
+            width: 2px;
+            height: 16px;
+        }
+
+        .sim-crosshair::after {
+            top: 7px;
+            left: 0;
+            width: 16px;
+            height: 2px;
+        }
+
+        .sim-prompt {
+            position: absolute;
+            left: 50%;
+            bottom: 58px;
+            transform: translateX(-50%);
+            padding: 8px 14px;
+            background: rgba(0, 0, 0, 0.72);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .sim-hint {
+            position: absolute;
+            left: 50%;
+            top: 16px;
+            transform: translateX(-50%);
+            max-width: 90%;
+            padding: 8px 14px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            color: var(--muted);
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        .sim-room-badge {
+            position: absolute;
+            left: 14px;
+            bottom: 14px;
+            padding: 6px 11px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            font-size: 0.82rem;
+        }
     </style>
 </head>
 
@@ -755,6 +960,8 @@
 
 <nav class="tabs">
     <button class="tab active" data-view="dashboard">Dashboard</button>
+    <button class="tab" data-view="sim">3D Walk</button>
+    <button class="tab" data-view="building">Building</button>
     <button class="tab" data-view="devices">Devices</button>
     <button class="tab" data-view="blueprints">Blueprint Scripts</button>
 </nav>
@@ -762,6 +969,32 @@
 <main>
     <!-- Dashboard -->
     <section id="view-dashboard" class="view active">
+        <div class="panel" style="margin-bottom: 18px;">
+            <h2>Building Energy</h2>
+
+            <div class="automation-summary" style="margin-bottom: 0;">
+                <div class="automation-stat">
+                    <span>Current power</span>
+                    <strong id="building-power">– W</strong>
+                </div>
+
+                <div class="automation-stat">
+                    <span>Total energy</span>
+                    <strong id="building-energy">– kWh</strong>
+                </div>
+
+                <div class="automation-stat">
+                    <span>Floors</span>
+                    <strong id="building-floors">0</strong>
+                </div>
+
+                <div class="automation-stat">
+                    <span>Rooms</span>
+                    <strong id="building-rooms">0</strong>
+                </div>
+            </div>
+        </div>
+
         <div id="room-dashboard" class="grid dashboard-grid"></div>
 
         <div class="panel" style="margin-top: 18px;">
@@ -812,6 +1045,73 @@
         </div>
     </section>
 
+    <!-- 3D walkable simulation -->
+    <section id="view-sim" class="view">
+        <div class="panel" style="padding: 0; overflow: hidden;">
+            <div class="sim-toolbar">
+                <label for="sim-floor" class="help">Floor</label>
+                <select id="sim-floor"></select>
+
+                <button id="sim-mode-orbit" class="small secondary">🎥 Orbit view</button>
+                <button id="sim-mode-walk" class="small success">🚶 Walk mode</button>
+
+                <div class="sim-stats">
+                    <span>Building power <strong id="sim-power">– W</strong></span>
+                    <span>Total energy <strong id="sim-energy">– kWh</strong></span>
+                    <span>You are in <strong id="sim-room">the corridor</strong></span>
+                </div>
+            </div>
+
+            <div id="sim-scene">
+                <div class="sim-hud">
+                    <div id="sim-hint" class="sim-hint">
+                        Press <strong>Walk mode</strong>, then click the view.
+                        Move with <strong>W A S D</strong>, look with the mouse, press
+                        <strong>E</strong> to interact with doors, locks and lights.
+                        <strong>Esc</strong> releases the mouse — click the view to grab it again.
+                    </div>
+                    <div id="sim-prompt" class="sim-prompt hidden"></div>
+                    <div id="sim-crosshair" class="sim-crosshair hidden"></div>
+                    <div id="sim-room-badge" class="sim-room-badge hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel" style="margin-top: 18px;">
+            <h3>How to play</h3>
+            <p class="help">
+                Walk into a room and its <strong>occupancy</strong> and
+                <strong>motion</strong> sensors trigger immediately — the blueprint
+                scripts react (for example the lights turn on).<br>
+                <strong>E</strong> interacts with the nearest device: room door lock,
+                ceiling lights and the garage door.<br>
+                A <strong>locked door</strong> blocks the doorway. Every interaction is
+                published as a normal MQTT actuator command, so watch the Dashboard
+                event log and the energy meter while you play.<br>
+                The 3D view loads Three.js from a CDN, so it needs an internet
+                connection the first time.
+            </p>
+        </div>
+    </section>
+
+    <!-- Building structure editor -->
+    <section id="view-building" class="view">
+        <div class="panel">
+            <h2>Building Structure</h2>
+            <p class="help">
+                Building → Floor → Room. New rooms start their own MQTT sensor,
+                actuator, controller and energy tasks immediately.
+            </p>
+
+            <form id="floor-form" class="inline-form" style="margin-top: 12px;">
+                <input id="floor-name" required placeholder="New floor name, e.g. Floor 3">
+                <button type="submit" class="success">Add Floor</button>
+            </form>
+        </div>
+
+        <div id="floor-list"></div>
+    </section>
+
     <!-- Device management -->
     <section id="view-devices" class="view">
         <div class="panel">
@@ -820,10 +1120,7 @@
             <form id="device-form" class="form-grid">
                 <input id="device-name" required placeholder="Display name, e.g. CO₂ Sensor">
 
-                <select id="device-room">
-                    <option value="room-101">Room 101</option>
-                    <option value="room-102">Room 102</option>
-                </select>
+                <select id="device-room"></select>
 
                 <select id="device-kind">
                     <option value="sensor">Sensor</option>
@@ -957,7 +1254,15 @@
 </main>
 
 <script>
-    const ROOMS = ["room-101", "room-102"];
+    /* ---------------------------------------------------------------------- */
+    /* Building model (Building -> Floor -> Room)                             */
+    /* ---------------------------------------------------------------------- */
+
+    let building = { id: "main", name: "Building", floors: [] };
+    let buildingKey = "";
+
+    /** room id -> floor id, rebuilt whenever the building changes. */
+    let roomFloor = new Map();
 
     let devices = [];
     let blueprints = [];
@@ -968,6 +1273,63 @@
 
     const nodeLayer = document.getElementById("node-layer");
     const edgeLayer = document.getElementById("edge-layer");
+
+    // Shared with the 3D module script at the bottom of this file.
+    window.SIM = {
+        building,
+        topics: {},
+        devices,
+        onUpdate: null,
+        onTabVisible: null
+    };
+
+    function adoptBuilding(nextBuilding) {
+        if (!nextBuilding) return false;
+
+        const key = JSON.stringify(nextBuilding);
+        if (key === buildingKey) return false;
+
+        building = nextBuilding;
+        buildingKey = key;
+        roomFloor = new Map();
+
+        building.floors.forEach(floor => {
+            floor.rooms.forEach(room => roomFloor.set(room.id, floor.id));
+        });
+
+        window.SIM.building = building;
+        return true;
+    }
+
+    function allRooms() {
+        return building.floors.flatMap(floor =>
+            floor.rooms.map(room => ({ ...room, floor_id: floor.id }))
+        );
+    }
+
+    function floorLabel(floorId) {
+        return building.floors.find(floor => floor.id === floorId)?.name ?? floorId;
+    }
+
+    function roomBase(roomId) {
+        const floorId = roomFloor.get(roomId);
+        return `building/${building.id}/floor/${floorId}/room/${roomId}`;
+    }
+
+    function roomActuators(room) {
+        const actuators = [
+            ["heating", "Heating"],
+            ["ventilation", "Ventilation"],
+            ["lights", "Lights"],
+            ["door_lock", "Door Lock"]
+        ];
+
+        if (room.kind === "garage") {
+            actuators.push(["garage_door", "Garage Door"]);
+        }
+
+        return actuators;
+    }
 
     /* ---------------------------------------------------------------------- */
     /* Tab navigation                                                         */
@@ -987,6 +1349,8 @@
 
             if (viewName === "devices") loadDevices();
             if (viewName === "blueprints") loadBlueprints();
+            if (viewName === "building") renderBuilding();
+            if (viewName === "sim") window.SIM.onTabVisible?.();
         });
     });
 
@@ -1013,19 +1377,26 @@
     }
 
     function roomDashboardHtml(room) {
-        const label = room.replace("room-", "Room ");
+        const floorId = roomFloor.get(room.id);
+        const actuators = roomActuators(room)
+            .map(([type, label]) => actuatorHtml(room, type, label))
+            .join("");
 
         return `
             <article class="panel room-card">
                 <div class="room-header">
                     <div>
-                        <h2>${label}</h2>
-                        <span class="help">Live MQTT room state</span>
+                        <h2>${escapeHtml(room.name)}</h2>
+                        <span class="help">
+                            ${escapeHtml(floorLabel(floorId))} ·
+                            ${escapeHtml(room.kind)} ·
+                            ${room.width} × ${room.depth} m
+                        </span>
                     </div>
 
                     <div class="availability">
-                        <span id="availability-dot-${room}" class="dot"></span>
-                        <span id="availability-${room}">Unknown</span>
+                        <span id="availability-dot-${room.id}" class="dot"></span>
+                        <span id="availability-${room.id}">Unknown</span>
                     </div>
                 </div>
 
@@ -1033,32 +1404,50 @@
                     <div class="metrics">
                         <div class="metric">
                             <span class="metric-label">Temperature</span>
-                            <strong id="temperature-${room}" class="metric-value">– °C</strong>
+                            <strong id="temperature-${room.id}" class="metric-value">– °C</strong>
                         </div>
 
                         <div class="metric">
                             <span class="metric-label">Humidity</span>
-                            <strong id="humidity-${room}" class="metric-value">– %</strong>
+                            <strong id="humidity-${room.id}" class="metric-value">– %</strong>
                         </div>
 
                         <div class="metric">
                             <span class="metric-label">CO₂</span>
-                            <strong id="co2-${room}" class="metric-value">– ppm</strong>
+                            <strong id="co2-${room.id}" class="metric-value">– ppm</strong>
                             <div class="co2-bar">
-                                <div id="co2-bar-${room}" class="co2-fill"></div>
+                                <div id="co2-bar-${room.id}" class="co2-fill"></div>
                             </div>
                         </div>
 
                         <div class="metric">
                             <span class="metric-label">Occupancy</span>
-                            <strong id="occupancy-${room}" class="metric-value">–</strong>
+                            <strong id="occupancy-${room.id}" class="metric-value">–</strong>
+                        </div>
+
+                        <div class="metric">
+                            <span class="metric-label">Motion</span>
+                            <strong id="motion-${room.id}" class="metric-value">–</strong>
+                        </div>
+
+                        <div class="metric">
+                            <span class="metric-label">Light</span>
+                            <strong id="light-${room.id}" class="metric-value">– lux</strong>
+                        </div>
+
+                        <div class="metric">
+                            <span class="metric-label">Power</span>
+                            <strong id="power-${room.id}" class="metric-value">– W</strong>
+                        </div>
+
+                        <div class="metric">
+                            <span class="metric-label">Energy</span>
+                            <strong id="energy-${room.id}" class="metric-value">– kWh</strong>
                         </div>
                     </div>
 
                     <div class="actuators">
-                        ${actuatorHtml(room, "heating", "Heating")}
-                        ${actuatorHtml(room, "ventilation", "Ventilation")}
-                        ${actuatorHtml(room, "lights", "Lights")}
+                        ${actuators}
                     </div>
                 </div>
             </article>
@@ -1067,11 +1456,11 @@
 
     function actuatorHtml(room, actuator, label) {
         return `
-            <div id="${actuator}-card-${room}" class="actuator">
+            <div id="${actuator}-card-${room.id}" class="actuator">
                 <span class="actuator-name">${label}</span>
                 <strong class="actuator-state">
                     <span class="actuator-indicator"></span>
-                    <span id="${actuator}-${room}">OFF</span>
+                    <span id="${actuator}-${room.id}">OFF</span>
                 </strong>
             </div>
         `;
@@ -1079,7 +1468,7 @@
 
     function setupDashboard() {
         document.getElementById("room-dashboard").innerHTML =
-            ROOMS.map(roomDashboardHtml).join("");
+            allRooms().map(roomDashboardHtml).join("");
     }
 
     function setText(id, text) {
@@ -1087,18 +1476,18 @@
         if (element) element.textContent = text;
     }
 
-    function updateActuator(room, name, enabled) {
-        const card = document.getElementById(`${name}-card-${room}`);
-        const label = document.getElementById(`${name}-${room}`);
+    function updateActuator(roomId, name, enabled, onText = "ON", offText = "OFF") {
+        const card = document.getElementById(`${name}-card-${roomId}`);
+        const label = document.getElementById(`${name}-${roomId}`);
 
         if (!card || !label) return;
 
         card.classList.toggle("active", enabled === true);
-        label.textContent = enabled ? "ON" : "OFF";
+        label.textContent = enabled ? onText : offText;
     }
 
-    function updateCo2Bar(room, co2) {
-        const bar = document.getElementById(`co2-bar-${room}`);
+    function updateCo2Bar(roomId, co2) {
+        const bar = document.getElementById(`co2-bar-${roomId}`);
         if (!bar || co2 === null) return;
 
         bar.style.width = `${Math.max(0, Math.min(100, co2 / 16))}%`;
@@ -1109,39 +1498,62 @@
     }
 
     function updateRoomDashboard(room, topics) {
-        const base = `building/main/room/${room}`;
+        const base = roomBase(room.id);
+        const id = room.id;
 
         const temperature = getValue(topics, `${base}/sensor/temperature`, "temperature_c");
         const humidity = getValue(topics, `${base}/sensor/humidity`, "humidity_percent");
         const co2 = getValue(topics, `${base}/sensor/co2`, "co2_ppm");
         const occupied = getValue(topics, `${base}/sensor/occupancy`, "occupied");
+        const motion = getValue(topics, `${base}/sensor/motion`, "motion_detected");
+        const lux = getValue(topics, `${base}/sensor/illuminance`, "illuminance_lux");
+        const energy = getTopic(topics, `${base}/sensor/energy`);
 
         const heating = getValue(topics, `${base}/actuator/heating/state`, "enabled", false);
         const ventilation = getValue(topics, `${base}/actuator/ventilation/state`, "enabled", false);
         const lights = getValue(topics, `${base}/actuator/lights/state`, "enabled", false);
+        const locked = getValue(topics, `${base}/actuator/door_lock/state`, "enabled", false);
+
+        const garage = room.kind === "garage"
+            ? getValue(topics, `${base}/actuator/garage_door/state`, "enabled", false)
+            : null;
 
         const availability = getValue(
             topics,
-            `building/main/device/actuator-${room}/availability`,
+            `building/${building.id}/device/actuator-${id}/availability`,
             "status",
             "unknown"
         );
 
-        setText(`temperature-${room}`, temperature !== null ? `${temperature} °C` : "– °C");
-        setText(`humidity-${room}`, humidity !== null ? `${humidity} %` : "– %");
-        setText(`co2-${room}`, co2 !== null ? `${co2} ppm` : "– ppm");
-        setText(`occupancy-${room}`, occupied === null ? "–" : occupied ? "Present" : "Empty");
+        const powerW = energy?.value?.power_w ?? null;
+        const energyKwh = energy?.value?.energy_kwh ?? null;
 
-        updateCo2Bar(room, co2);
-        updateActuator(room, "heating", heating);
-        updateActuator(room, "ventilation", ventilation);
-        updateActuator(room, "lights", lights);
+        setText(`temperature-${id}`, temperature !== null ? `${temperature} °C` : "– °C");
+        setText(`humidity-${id}`, humidity !== null ? `${humidity} %` : "– %");
+        setText(`co2-${id}`, co2 !== null ? `${co2} ppm` : "– ppm");
+        setText(`occupancy-${id}`, occupied === null ? "–" : occupied ? "Present" : "Empty");
+        setText(`motion-${id}`, motion === null ? "–" : motion ? "Detected" : "Still");
+        setText(`light-${id}`, lux !== null ? `${Math.round(lux)} lux` : "– lux");
+        setText(`power-${id}`, powerW !== null ? `${powerW} W` : "– W");
+        setText(`energy-${id}`, energyKwh !== null ? `${energyKwh} kWh` : "– kWh");
 
-        setText(`availability-${room}`, String(availability).toUpperCase());
+        updateCo2Bar(id, co2);
+        updateActuator(id, "heating", heating);
+        updateActuator(id, "ventilation", ventilation);
+        updateActuator(id, "lights", lights);
+        updateActuator(id, "door_lock", locked, "LOCKED", "UNLOCKED");
 
-        const dot = document.getElementById(`availability-dot-${room}`);
-        dot.classList.toggle("online", availability === "online");
-        dot.classList.toggle("offline", availability === "offline");
+        if (room.kind === "garage") {
+            updateActuator(id, "garage_door", garage, "OPEN", "SHUT");
+        }
+
+        setText(`availability-${id}`, String(availability).toUpperCase());
+
+        const dot = document.getElementById(`availability-dot-${id}`);
+        if (dot) {
+            dot.classList.toggle("online", availability === "online");
+            dot.classList.toggle("offline", availability === "offline");
+        }
     }
 
     function updateEvents(events) {
@@ -1168,23 +1580,55 @@
         eventList.innerHTML = content || `<p class="empty">No events received yet.</p>`;
     }
 
+    function updateBuildingEnergy(topics) {
+        let power = 0;
+        let energy = 0;
+        let known = false;
+
+        for (const room of allRooms()) {
+            const message = getTopic(topics, `${roomBase(room.id)}/sensor/energy`);
+
+            if (message?.value) {
+                known = true;
+                power += message.value.power_w ?? 0;
+                energy += message.value.energy_kwh ?? 0;
+            }
+        }
+
+        setText("building-power", known ? `${Math.round(power)} W` : "– W");
+        setText("building-energy", known ? `${energy.toFixed(3)} kWh` : "– kWh");
+        setText("sim-power", known ? `${Math.round(power)} W` : "– W");
+        setText("sim-energy", known ? `${energy.toFixed(3)} kWh` : "– kWh");
+        setText("building-floors", building.floors.length);
+        setText("building-rooms", allRooms().length);
+    }
+
     async function refreshDashboard() {
         try {
-            const [stateResponse, eventsResponse] = await Promise.all([
+            const [buildingResponse, stateResponse, eventsResponse] = await Promise.all([
+                fetch("/api/building"),
                 fetch("/api/state"),
                 fetch("/api/events")
             ]);
 
-            if (!stateResponse.ok || !eventsResponse.ok) {
+            if (!buildingResponse.ok || !stateResponse.ok || !eventsResponse.ok) {
                 throw new Error("Dashboard API unavailable");
+            }
+
+            if (adoptBuilding(await buildingResponse.json())) {
+                setupDashboard();
+                populateRoomSelect();
+                renderBuilding();
             }
 
             const state = await stateResponse.json();
             const events = await eventsResponse.json();
 
             const topics = state.topics || {};
+            window.SIM.topics = topics;
 
-            ROOMS.forEach(room => updateRoomDashboard(room, topics));
+            allRooms().forEach(room => updateRoomDashboard(room, topics));
+            updateBuildingEnergy(topics);
             renderDeviceActivity(topics);
             updateEvents(events);
 
@@ -1192,6 +1636,8 @@
 
             document.getElementById("connection-dot").className = "dot online";
             setText("connection-text", "MQTT dashboard online");
+
+            window.SIM.onUpdate?.();
         } catch (error) {
             document.getElementById("connection-dot").className = "dot offline";
             setText("connection-text", "Dashboard connection unavailable");
@@ -1207,14 +1653,36 @@
             ["temperature", "Temperature"],
             ["humidity", "Humidity"],
             ["co2", "CO₂"],
-            ["occupancy", "Occupancy"]
+            ["occupancy", "Occupancy"],
+            ["motion", "Motion"],
+            ["illuminance", "Illuminance"],
+            ["energy", "Energy Meter"]
         ],
         actuator: [
             ["heating", "Heating"],
             ["ventilation", "Ventilation"],
-            ["lights", "Lights"]
+            ["lights", "Lights"],
+            ["door_lock", "Door Lock"],
+            ["garage_door", "Garage Door"]
         ]
     };
+
+    function populateRoomSelect() {
+        const select = document.getElementById("device-room");
+        if (!select) return;
+
+        const rooms = allRooms();
+
+        select.innerHTML = rooms.map(room => `
+            <option value="${room.id}">
+                ${escapeHtml(room.name)} (${escapeHtml(floorLabel(room.floor_id))})
+            </option>
+        `).join("");
+
+        if (!rooms.length) {
+            select.innerHTML = `<option value="">No rooms yet — add one in the Building tab</option>`;
+        }
+    }
 
     function updateDeviceTypeOptions() {
         const kind = document.getElementById("device-kind").value;
@@ -1264,6 +1732,7 @@
             if (!response.ok) throw new Error("Could not load devices");
 
             devices = await response.json();
+            window.SIM.devices = devices;
             renderDevices();
         } catch (error) {
             document.getElementById("device-list").innerHTML =
@@ -1309,13 +1778,15 @@
     }
 
     function findDeviceAvailability(device, topics) {
-        const simulatorId = device.kind === "sensor"
-            ? `sensor-${device.room_id}`
-            : `actuator-${device.room_id}`;
+        const simulatorId = device.device_type === "energy"
+            ? `energy-meter-${device.room_id}`
+            : device.kind === "sensor"
+                ? `sensor-${device.room_id}`
+                : `actuator-${device.room_id}`;
 
         return getValue(
             topics,
-            `building/main/device/${simulatorId}/availability`,
+            `building/${building.id}/device/${simulatorId}/availability`,
             "status",
             "unknown"
         );
@@ -1369,6 +1840,22 @@
                 if (value.occupied === false) return "Room is empty";
                 return "Waiting for occupancy";
 
+            case "motion":
+                if (value.motion_detected === true) return "Motion detected";
+                if (value.motion_detected === false) return "No motion";
+                return "Waiting for motion sensor";
+
+            case "illuminance":
+                return value.illuminance_lux !== undefined
+                    ? `${Math.round(value.illuminance_lux)} lux`
+                    : "Waiting for illuminance";
+
+            case "energy": {
+                if (value.power_w === undefined) return "Waiting for energy meter";
+
+                return `${value.power_w} W · ${value.energy_kwh ?? 0} kWh`;
+            }
+
             default:
                 return JSON.stringify(value);
         }
@@ -1383,6 +1870,14 @@
         const enabled = value.enabled === true;
         const power = value.power_percent ?? 0;
         const mode = value.mode ?? "unknown";
+
+        if (value.locked !== undefined) {
+            return `${value.locked ? "Locked" : "Unlocked"} · ${power}% power · mode: ${mode}`;
+        }
+
+        if (value.position_percent !== undefined) {
+            return `${value.position_percent}% open${value.moving ? " (moving)" : ""} · mode: ${mode}`;
+        }
 
         if (!enabled) {
             return `OFF · mode: ${mode}`;
@@ -1870,7 +2365,9 @@
 
         if (!device) return "number";
 
-        return device.device_type === "occupancy" ? "boolean" : "number";
+        return ["occupancy", "motion"].includes(device.device_type)
+            ? "boolean"
+            : "number";
     }
 
     function renderBlueprintEditor() {
@@ -2179,23 +2676,1166 @@
     window.addEventListener("resize", renderEdges);
 
     /* ---------------------------------------------------------------------- */
+    /* Building editor (Building -> Floor -> Room)                            */
+    /* ---------------------------------------------------------------------- */
+
+    async function reloadBuilding() {
+        try {
+            const response = await fetch("/api/building");
+            if (!response.ok) throw new Error("Could not load building");
+
+            if (adoptBuilding(await response.json())) {
+                setupDashboard();
+                populateRoomSelect();
+                renderBuilding();
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    async function buildingRequest(url, method, payload) {
+        const response = await fetch(url, {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: payload !== undefined ? JSON.stringify(payload) : undefined
+        });
+
+        if (!response.ok) {
+            alert(`Request failed: ${await response.text()}`);
+            return null;
+        }
+
+        await reloadBuilding();
+        return response;
+    }
+
+    document.getElementById("floor-form").addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const input = document.getElementById("floor-name");
+        const name = input.value.trim();
+        if (!name) return;
+
+        const response = await buildingRequest("/api/floors", "POST", { name });
+        if (response) input.value = "";
+    });
+
+    async function deleteFloor(floorId) {
+        if (!confirm("Delete this floor and all of its rooms?")) return;
+        await buildingRequest(`/api/floors/${floorId}`, "DELETE");
+    }
+
+    async function createRoom(event, floorId) {
+        event.preventDefault();
+
+        const form = event.target;
+
+        await buildingRequest(`/api/floors/${floorId}/rooms`, "POST", {
+            name: form.room_name.value,
+            kind: form.room_kind.value
+        });
+
+        return false;
+    }
+
+    async function saveRoom(roomId) {
+        const value = id => document.getElementById(id)?.value;
+
+        await buildingRequest(`/api/rooms/${roomId}`, "PATCH", {
+            name: value(`room-name-${roomId}`),
+            color: value(`room-color-${roomId}`),
+            width: Number(value(`room-width-${roomId}`)),
+            depth: Number(value(`room-depth-${roomId}`)),
+            height: Number(value(`room-height-${roomId}`)),
+            kind: value(`room-kind-${roomId}`)
+        });
+    }
+
+    async function deleteRoom(roomId) {
+        if (!confirm("Delete this room? Its devices and simulator tasks are stopped.")) return;
+        await buildingRequest(`/api/rooms/${roomId}`, "DELETE");
+    }
+
+    function roomTileHtml(floor, room) {
+        return `
+            <div class="room-tile" style="--tile-color: ${escapeHtml(room.color)}">
+                <div class="room-tile-head">
+                    <h3>${escapeHtml(room.name)}</h3>
+                    <span class="badge ${room.kind === "garage" ? "actuator" : "sensor"}">
+                        ${escapeHtml(room.kind)}
+                    </span>
+                </div>
+
+                <div class="device-topic">${escapeHtml(room.id)} · ${escapeHtml(floor.name)}</div>
+
+                <div class="room-edit-grid">
+                    <div>
+                        <label>Name</label>
+                        <input id="room-name-${room.id}" value="${escapeHtml(room.name)}">
+                    </div>
+
+                    <div>
+                        <label>Colour</label>
+                        <input type="color" id="room-color-${room.id}" value="${escapeHtml(room.color)}">
+                    </div>
+
+                    <div>
+                        <label>Width (m)</label>
+                        <input type="number" step="0.5" min="2" max="60"
+                               id="room-width-${room.id}" value="${room.width}">
+                    </div>
+
+                    <div>
+                        <label>Depth (m)</label>
+                        <input type="number" step="0.5" min="2" max="60"
+                               id="room-depth-${room.id}" value="${room.depth}">
+                    </div>
+
+                    <div>
+                        <label>Height (m)</label>
+                        <input type="number" step="0.1" min="2" max="10"
+                               id="room-height-${room.id}" value="${room.height}">
+                    </div>
+
+                    <div>
+                        <label>Kind</label>
+                        <select id="room-kind-${room.id}">
+                            <option value="office" ${room.kind === "office" ? "selected" : ""}>Office</option>
+                            <option value="garage" ${room.kind === "garage" ? "selected" : ""}>Garage</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="inline-form" style="margin-top: 10px;">
+                    <button class="success small" onclick="saveRoom('${room.id}')">Save Room</button>
+                    <button class="danger small" onclick="deleteRoom('${room.id}')">Delete Room</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderBuilding() {
+        const list = document.getElementById("floor-list");
+        if (!list) return;
+
+        if (!building.floors.length) {
+            list.innerHTML = `
+                <div class="panel" style="margin-top: 18px;">
+                    <p class="empty">No floors yet — add the first floor above.</p>
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML = building.floors.map(floor => `
+            <div class="panel floor-block">
+                <div class="floor-header">
+                    <div>
+                        <h2>${escapeHtml(floor.name)}</h2>
+                        <span class="help">${floor.rooms.length} rooms · ${escapeHtml(floor.id)}</span>
+                    </div>
+
+                    <button class="danger small" onclick="deleteFloor('${floor.id}')">
+                        Delete Floor
+                    </button>
+                </div>
+
+                <form class="inline-form" onsubmit="return createRoom(event, '${floor.id}')">
+                    <input name="room_name" required placeholder="New room name, e.g. Lab 7">
+                    <select name="room_kind">
+                        <option value="office">Office</option>
+                        <option value="garage">Garage</option>
+                    </select>
+                    <button type="submit" class="success">Add Room</button>
+                </form>
+
+                <div class="room-tiles" style="margin-top: 14px;">
+                    ${floor.rooms.map(room => roomTileHtml(floor, room)).join("")}
+                </div>
+            </div>
+        `).join("");
+    }
+
+    /* ---------------------------------------------------------------------- */
     /* Initialisation                                                         */
     /* ---------------------------------------------------------------------- */
 
     async function initialiseApplication() {
-        setupDashboard();
         updateDeviceTypeOptions();
+        populateRoomSelect();
 
         await Promise.all([
             loadDevices(),
             loadBlueprints()
         ]);
 
+        await reloadBuilding();
+
+        setupDashboard();
+        renderBuilding();
+
         await refreshDashboard();
 
         window.setInterval(refreshDashboard, 2000);
     }
     initialiseApplication();
+</script>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+}
+</script>
+
+<script type="module">
+    /* ====================================================================== */
+    /* 3D building simulation + walkable minigame                             */
+    /*                                                                        */
+    /* Reads the Building -> Floor -> Room tree and the MQTT topic cache from */
+    /* window.SIM (shared with the dashboard script above) and lets the       */
+    /* player walk through rooms to trigger occupancy / motion sensors.       */
+    /* ====================================================================== */
+
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+    import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
+
+    const SIM = window.SIM;
+
+    const container = document.getElementById("sim-scene");
+    const floorSelect = document.getElementById("sim-floor");
+    const promptBox = document.getElementById("sim-prompt");
+    const hintBox = document.getElementById("sim-hint");
+    const crosshair = document.getElementById("sim-crosshair");
+    const roomBadge = document.getElementById("sim-room-badge");
+
+    const PLAYER_RADIUS = 0.35;
+    const EYE_HEIGHT = 1.65;
+    const WALL_THICKNESS = 0.18;
+
+    const playerId = sessionStorage.getItem("sim-player-id")
+        || (() => {
+            const id = `player-${crypto.randomUUID()}`;
+            sessionStorage.setItem("sim-player-id", id);
+            return id;
+        })();
+
+    let renderer = null;
+    let scene = null;
+    let camera = null;
+    let orbit = null;
+    let fp = null;
+    let floorRoot = null;
+
+    let walkMode = false;
+    let builtKey = "";
+    let floorKey = "";
+    let bounds = { x1: -20, z1: -20, x2: 20, z2: 20 };
+    let spawnPoint = new THREE.Vector3(0, EYE_HEIGHT, 12);
+    let overviewPosition = new THREE.Vector3(16, 14, 20);
+
+    /** Every wall / piece of furniture the player can bump into. */
+    let colliders = [];
+
+    /** room id -> visual + logical room reference. */
+    let rooms = new Map();
+
+    let lastPresence = undefined;
+    let currentRoomId = null;
+    let nearestTarget = null;
+    let promptTimer = 0;
+
+    const keys = Object.create(null);
+
+    /* ---------------------------------------------------------------------- */
+    /* Topic helpers (same layout as src/topics.rs)                           */
+    /* ---------------------------------------------------------------------- */
+
+    function floorIdOfRoom(roomId) {
+        const floor = SIM.building?.floors?.find(entry =>
+            entry.rooms.some(room => room.id === roomId)
+        );
+
+        return floor?.id ?? null;
+    }
+
+    function roomBase(roomId) {
+        const floorId = floorIdOfRoom(roomId);
+        if (!floorId || !SIM.building) return null;
+
+        return `building/${SIM.building.id}/floor/${floorId}/room/${roomId}`;
+    }
+
+    function roomTopic(roomId, suffix) {
+        const base = roomBase(roomId);
+        if (!base) return null;
+
+        const key = Object.keys(SIM.topics || {})
+            .find(topic => topic.endsWith(`${base}/${suffix}`));
+
+        return key ? SIM.topics[key] : null;
+    }
+
+    function stateValue(ref, actuator, field, fallback = null) {
+        const override = ref.overrides[actuator];
+
+        // Optimistic local value right after an E-key interaction.
+        if (override && override.until > performance.now()) {
+            if (field === "enabled" || field === "locked") return override.value;
+            if (field === "position_percent") return override.value ? 100 : 0;
+        }
+
+        return roomTopic(ref.room.id, `actuator/${actuator}/state`)?.value?.[field] ?? fallback;
+    }
+
+    function deviceExists(roomId, actuator) {
+        if (!SIM.devices || !SIM.devices.length) return true;
+
+        return SIM.devices.some(device =>
+            device.room_id === roomId && device.device_type === actuator
+        );
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /* Scene setup                                                            */
+    /* ---------------------------------------------------------------------- */
+
+    function isVisible() {
+        return document.getElementById("view-sim")?.classList.contains("active") ?? false;
+    }
+
+    function ensureInit() {
+        if (renderer) return;
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x071421);
+        scene.fog = new THREE.Fog(0x071421, 50, 110);
+
+        camera = new THREE.PerspectiveCamera(70, 1, 0.1, 250);
+        camera.position.set(16, 14, 20);
+
+        scene.add(new THREE.HemisphereLight(0xbcd7ff, 0x22303f, 0.8));
+
+        const sun = new THREE.DirectionalLight(0xfff2dd, 1.1);
+        sun.position.set(18, 32, 12);
+        scene.add(sun);
+
+        floorRoot = new THREE.Group();
+        scene.add(floorRoot);
+
+        orbit = new OrbitControls(camera, renderer.domElement);
+        orbit.enableDamping = true;
+        orbit.maxPolarAngle = Math.PI / 2.05;
+
+        // Chrome refuses a re-lock for ~1.3s after the player exits pointer
+        // lock with Esc, rejecting through the promise that requestPointerLock()
+        // returns. THREE discards that promise (and only warns on the older
+        // pointerlockerror path), so handle both here: swallow the rejection
+        // and keep a retry hint on screen — the next click on the view always
+        // retries cleanly.
+        const defaultHint = hintBox.innerHTML;
+        const showLockRetryHint = () => {
+            hintBox.classList.remove("hidden");
+            hintBox.innerHTML =
+                "Mouse lock was refused — click the view again in a moment. " +
+                "Browsers block re-locking right after <strong>Esc</strong>.";
+        };
+
+        fp = new PointerLockControls(camera, renderer.domElement);
+
+        fp.lock = () => {
+            const request = renderer.domElement.requestPointerLock();
+
+            if (request && typeof request.catch === "function") {
+                request.catch(showLockRetryHint);
+            }
+        };
+
+        renderer.domElement.addEventListener("pointerlockerror", showLockRetryHint);
+
+        fp.addEventListener("lock", () => {
+            hintBox.innerHTML = defaultHint;
+            crosshair.classList.remove("hidden");
+            hintBox.classList.add("hidden");
+        });
+
+        fp.addEventListener("unlock", () => {
+            crosshair.classList.add("hidden");
+            hintBox.classList.remove("hidden");
+            keysClear();
+        });
+
+        container.addEventListener("click", () => {
+            if (walkMode && !fp.isLocked) fp.lock();
+        });
+
+        document.getElementById("sim-mode-walk").addEventListener("click", () => {
+            walkMode = true;
+            orbit.enabled = false;
+
+            // The orbit camera sits outside the walkable bounds, and movement
+            // is collision-checked against them — drop the player at spawn.
+            camera.position.copy(spawnPoint);
+            camera.lookAt(0, EYE_HEIGHT, 0);
+
+            fp.lock();
+        });
+
+        document.getElementById("sim-mode-orbit").addEventListener("click", () => {
+            walkMode = false;
+            if (fp.isLocked) fp.unlock();
+            orbit.enabled = true;
+            hintBox.classList.remove("hidden");
+
+            // Fly back to the doll-house overview.
+            camera.position.copy(overviewPosition);
+            orbit.target.set(0, 0, 0);
+            orbit.update();
+        });
+
+        floorSelect.addEventListener("change", () => rebuild());
+
+        window.addEventListener("keydown", event => {
+            if (isTyping(event)) return;
+
+            keys[event.code] = true;
+
+            if (event.code === "KeyE" && fp.isLocked && !event.repeat) {
+                interact();
+            }
+        });
+
+        window.addEventListener("keyup", event => {
+            keys[event.code] = false;
+        });
+
+        window.addEventListener("resize", resize);
+
+        rebuild();
+        requestAnimationFrame(animate);
+    }
+
+    function isTyping(event) {
+        const tag = event.target?.tagName;
+        return tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA";
+    }
+
+    function keysClear() {
+        for (const code of Object.keys(keys)) keys[code] = false;
+    }
+
+    function resize() {
+        if (!renderer) return;
+
+        const width = container.clientWidth || 800;
+        const height = container.clientHeight || 500;
+
+        renderer.setSize(width, height, false);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /* Building reconstruction                                                */
+    /* ---------------------------------------------------------------------- */
+
+    function buildKey() {
+        const floors = SIM.building?.floors ?? [];
+        const floorId = floorSelect.value;
+
+        const floor = floors.find(entry => entry.id === floorId) ?? floors[0];
+
+        if (!floor) return "";
+
+        // Includes every floor, so adding/removing floors refreshes the selector.
+        const floorList = floors.map(entry => `${entry.id}:${entry.rooms.length}`).join(",");
+
+        return `${floorList}|${floor.id}|${JSON.stringify(floor.rooms)}`;
+    }
+
+    function disposeGroup(group) {
+        group.traverse(object => {
+            object.geometry?.dispose();
+
+            if (object.material) {
+                const materials = Array.isArray(object.material) ? object.material : [object.material];
+                materials.forEach(material => {
+                    material.map?.dispose();
+                    material.dispose();
+                });
+            }
+        });
+
+        group.clear();
+    }
+
+    function layoutRooms(roomList) {
+        const maxW = Math.max(6, ...roomList.map(room => room.width));
+        const maxD = Math.max(5, ...roomList.map(room => room.depth));
+
+        const cellW = maxW + 7;
+        const cellD = maxD + 7;
+
+        const cols = Math.max(1, Math.ceil(Math.sqrt(roomList.length)));
+        const rows = Math.max(1, Math.ceil(roomList.length / cols));
+
+        const totalW = cols * cellW;
+        const totalD = rows * cellD;
+
+        const entries = roomList.map((room, index) => {
+            const col = index % cols;
+            const row = Math.floor(index / cols);
+
+            return {
+                room,
+                cx: -totalW / 2 + (col + 0.5) * cellW,
+                cz: -totalD / 2 + (row + 0.5) * cellD
+            };
+        });
+
+        return { entries, totalW, totalD };
+    }
+
+    function addBox(group, material, size, position, solid = true) {
+        const mesh = new THREE.Mesh(
+            new THREE.BoxGeometry(size.x, size.y, size.z),
+            material
+        );
+
+        mesh.position.set(position.x, position.y, position.z);
+        group.add(mesh);
+
+        if (solid) {
+            addCollider(
+                position.x - size.x / 2,
+                position.z - size.z / 2,
+                position.x + size.x / 2,
+                position.z + size.z / 2
+            );
+        }
+
+        return mesh;
+    }
+
+    function addCollider(x1, z1, x2, z2, isSolid = null) {
+        colliders.push({ x1, z1, x2, z2, isSolid });
+    }
+
+    function makeLabel(text) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 128;
+
+        const context = canvas.getContext("2d");
+        context.fillStyle = "rgba(4, 12, 22, 0.72)";
+        context.fillRect(0, 16, 512, 96);
+
+        context.font = "bold 58px Inter, Arial";
+        context.fillStyle = "#e7f0f8";
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText(text, 256, 66, 480);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+
+        const sprite = new THREE.Sprite(
+            new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false })
+        );
+
+        sprite.scale.set(4.6, 1.15, 1);
+        return sprite;
+    }
+
+    function buildRoom(entry) {
+        const { room, cx, cz } = entry;
+        const { width: w, depth: d, height: h } = room;
+
+        const isGarage = room.kind === "garage";
+        const doorW = isGarage ? Math.min(Math.max(w * 0.55, 2.4), 4.6) : 1.4;
+        const doorH = Math.min(h - 0.35, isGarage ? 2.5 : 2.15);
+
+        const group = new THREE.Group();
+        const wallMaterial = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(room.color),
+            roughness: 0.95
+        });
+
+        const floorMaterial = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(room.color).multiplyScalar(1.7),
+            roughness: 1.0
+        });
+
+        // Room floor slab, slightly above the building slab.
+        const floor = new THREE.Mesh(new THREE.BoxGeometry(w, 0.06, d), floorMaterial);
+        floor.position.set(cx, 0.03, cz);
+        group.add(floor);
+
+        // North wall (full).
+        addBox(group, wallMaterial, { x: w, y: h, z: WALL_THICKNESS },
+            { x: cx, y: h / 2, z: cz - d / 2 });
+
+        // West and east walls (full).
+        addBox(group, wallMaterial, { x: WALL_THICKNESS, y: h, z: d },
+            { x: cx - w / 2, y: h / 2, z: cz });
+        addBox(group, wallMaterial, { x: WALL_THICKNESS, y: h, z: d },
+            { x: cx + w / 2, y: h / 2, z: cz });
+
+        // South wall: two segments around the doorway.
+        const segment = (w - doorW) / 2;
+        const southZ = cz + d / 2;
+
+        addBox(group, wallMaterial, { x: segment, y: h, z: WALL_THICKNESS },
+            { x: cx - doorW / 2 - segment / 2, y: h / 2, z: southZ });
+        addBox(group, wallMaterial, { x: segment, y: h, z: WALL_THICKNESS },
+            { x: cx + doorW / 2 + segment / 2, y: h / 2, z: southZ });
+
+        // Header above the door (visual only, no collider).
+        if (doorH < h) {
+            addBox(group, wallMaterial, { x: doorW, y: h - doorH, z: WALL_THICKNESS },
+                { x: cx, y: doorH + (h - doorH) / 2, z: southZ }, false);
+        }
+
+        const ref = {
+            room,
+            cx, cz, w, d, h,
+            isGarage,
+            doorX: cx,
+            doorZ: southZ,
+            doorTop: doorH,
+            group,
+            overrides: {},
+            locked: false,
+            openPercent: 0,
+            fanOn: false,
+            lamp: null,
+            lampLight: null,
+            radiator: null,
+            fan: null,
+            lockMesh: null,
+            shutter: null
+        };
+
+        /* Doorway collider: blocked while the door is locked, or while the
+           garage shutter is (almost) closed. */
+        const gapWidth = isGarage ? doorW : 1.4;
+
+        addCollider(cx - gapWidth / 2, southZ - 0.2, cx + gapWidth / 2, southZ + 0.2, () => {
+            if (isGarage) return ref.openPercent < 55;
+            return ref.locked;
+        });
+
+        /* Ceiling lamp. */
+        const lampMaterial = new THREE.MeshStandardMaterial({
+            color: 0xfff4d6,
+            emissive: 0xffe9a8,
+            emissiveIntensity: 0.15
+        });
+
+        ref.lamp = addBox(group, lampMaterial, { x: 0.7, y: 0.1, z: 0.7 },
+            { x: cx, y: h - 0.08, z: cz }, false);
+
+        ref.lampLight = new THREE.PointLight(0xffe9a8, 0, 14, 2);
+        ref.lampLight.position.set(cx, h - 0.5, cz);
+        group.add(ref.lampLight);
+
+        /* Radiator along the north wall. */
+        const radiatorMaterial = new THREE.MeshStandardMaterial({
+            color: 0xd8dee6,
+            emissive: 0xff5533,
+            emissiveIntensity: 0
+        });
+
+        ref.radiator = addBox(group, radiatorMaterial, { x: 1.7, y: 0.55, z: 0.22 },
+            { x: cx, y: 0.42, z: cz - d / 2 + 0.3 });
+
+        /* Ventilation fan high on the east wall. */
+        const fanMaterial = new THREE.MeshStandardMaterial({ color: 0x8fa6bd });
+        ref.fan = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.12, 20), fanMaterial);
+        ref.fan.rotation.z = Math.PI / 2;
+        ref.fan.position.set(cx + w / 2 - 0.16, h - 0.6, cz);
+        group.add(ref.fan);
+
+        /* Desk (office) or workbench (garage). */
+        const furnitureMaterial = new THREE.MeshStandardMaterial({ color: 0x6b4f33 });
+
+        if (isGarage) {
+            addBox(group, furnitureMaterial, { x: 2.2, y: 0.9, z: 0.9 },
+                { x: cx - w / 4, y: 0.45, z: cz - d / 4 });
+        } else {
+            addBox(group, furnitureMaterial, { x: 1.6, y: 0.75, z: 0.8 },
+                { x: cx - w / 4, y: 0.375, z: cz - d / 6 });
+        }
+
+        /* Door lock next to the doorway. */
+        const lockMaterial = new THREE.MeshStandardMaterial({
+            color: 0xff5566,
+            emissive: 0x330008,
+            emissiveIntensity: 0.4
+        });
+
+        ref.lockMesh = addBox(group, lockMaterial, { x: 0.14, y: 0.26, z: 0.1 },
+            { x: cx + doorW / 2 + 0.24, y: 1.05, z: southZ - WALL_THICKNESS }, false);
+
+        /* Garage shutter covering the doorway. */
+        if (isGarage) {
+            const shutterMaterial = new THREE.MeshStandardMaterial({
+                color: 0xb9c3cf,
+                roughness: 0.6,
+                metalness: 0.4
+            });
+
+            ref.shutter = new THREE.Mesh(
+                new THREE.BoxGeometry(doorW, doorH, 0.12),
+                shutterMaterial
+            );
+
+            ref.shutter.position.set(cx, doorH / 2, southZ);
+            group.add(ref.shutter);
+        }
+
+        /* Room label floating above the walls. */
+        const label = makeLabel(room.name);
+        label.position.set(cx, h + 0.75, cz);
+        group.add(label);
+
+        floorRoot.add(group);
+        rooms.set(room.id, ref);
+
+        return ref;
+    }
+
+    function rebuild() {
+        if (!renderer) return;
+
+        const floors = SIM.building?.floors ?? [];
+
+        floorKey = floors
+            .map(floor => `${floor.id}:${floor.rooms.length}`)
+            .join(",");
+
+        if (!floors.length) {
+            floorSelect.innerHTML = `<option>No floors yet</option>`;
+            disposeGroup(floorRoot);
+            rooms.clear();
+            colliders = [];
+            return;
+        }
+
+        // Populate / refresh the floor selector without losing the choice.
+        const wanted = floorSelect.value;
+        floorSelect.innerHTML = floors.map(floor => `
+            <option value="${floor.id}">${floor.name} (${floor.rooms.length} rooms)</option>
+        `).join("");
+
+        if (floors.some(floor => floor.id === wanted)) {
+            floorSelect.value = wanted;
+        }
+
+        const floor = floors.find(entry => entry.id === floorSelect.value) ?? floors[0];
+        floorSelect.value = floor.id;
+
+        builtKey = `${floor.id}|${JSON.stringify(floor.rooms)}`;
+
+        disposeGroup(floorRoot);
+        rooms.clear();
+        colliders = [];
+
+        const { entries, totalW, totalD } = layoutRooms(floor.rooms);
+
+        // Building slab.
+        const slab = new THREE.Mesh(
+            new THREE.BoxGeometry(totalW + 6, 0.2, totalD + 6),
+            new THREE.MeshStandardMaterial({ color: 0x16222f, roughness: 1 })
+        );
+
+        slab.position.set(0, -0.1, 0);
+        floorRoot.add(slab);
+
+        const grid = new THREE.GridHelper(Math.max(totalW, totalD) + 6, 40, 0x2f4a63, 0x1e3145);
+        grid.position.y = 0.005;
+        floorRoot.add(grid);
+
+        bounds = {
+            x1: -(totalW + 6) / 2,
+            x2: (totalW + 6) / 2,
+            z1: -(totalD + 6) / 2,
+            z2: (totalD + 6) / 2
+        };
+
+        entries.forEach(entry => buildRoom(entry));
+
+        // Player spawns on the south margin, outside every room.
+        spawnPoint = new THREE.Vector3(0, EYE_HEIGHT, bounds.z2 - 1.6);
+        overviewPosition.set(totalW * 0.75, Math.max(12, totalD * 0.6), totalD * 1.05 + 14);
+
+        if (walkMode) {
+            camera.position.copy(spawnPoint);
+            camera.lookAt(0, EYE_HEIGHT, 0);
+        } else {
+            camera.position.copy(overviewPosition);
+            orbit.target.set(0, 0, 0);
+            orbit.update();
+        }
+
+        resize();
+        applyStates();
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /* MQTT state -> visuals                                                  */
+    /* ---------------------------------------------------------------------- */
+
+    function applyStates() {
+        for (const ref of rooms.values()) {
+            const lights = stateValue(ref, "lights", "enabled", false) === true;
+            const heating = stateValue(ref, "heating", "enabled", false) === true;
+            const locked = stateValue(ref, "door_lock", "enabled", false) === true;
+            const open = stateValue(ref, "garage_door", "position_percent", 0);
+
+            ref.locked = locked;
+            ref.openPercent = ref.isGarage ? (Number(open) || 0) : 100;
+            ref.fanOn = stateValue(ref, "ventilation", "enabled", false) === true;
+
+            if (ref.lamp) {
+                ref.lamp.material.emissiveIntensity = lights ? 1.6 : 0.12;
+            }
+
+            if (ref.lampLight) {
+                ref.lampLight.intensity = lights ? 26 : 0;
+            }
+
+            if (ref.radiator) {
+                ref.radiator.material.emissiveIntensity = heating ? 1.1 : 0;
+            }
+
+            if (ref.lockMesh) {
+                ref.lockMesh.material.color.set(locked ? 0xff5566 : 0x31d184);
+                ref.lockMesh.material.emissive.set(locked ? 0x66101c : 0x0d4a2e);
+            }
+        }
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /* Player movement and collision                                         */
+    /* ---------------------------------------------------------------------- */
+
+    function isSolid(collider) {
+        return collider.isSolid ? collider.isSolid() : true;
+    }
+
+    function blockedAt(x, z) {
+        if (
+            x - PLAYER_RADIUS < bounds.x1 ||
+            x + PLAYER_RADIUS > bounds.x2 ||
+            z - PLAYER_RADIUS < bounds.z1 ||
+            z + PLAYER_RADIUS > bounds.z2
+        ) {
+            return true;
+        }
+
+        for (const collider of colliders) {
+            if (!isSolid(collider)) continue;
+
+            if (
+                x + PLAYER_RADIUS > collider.x1 &&
+                x - PLAYER_RADIUS < collider.x2 &&
+                z + PLAYER_RADIUS > collider.z1 &&
+                z - PLAYER_RADIUS < collider.z2
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function movePlayer(delta) {
+        // Self-heal: if the camera somehow ended up outside the walkable
+        // slab (e.g. orbiting in walk mode), snap back to the spawn point.
+        const outside =
+            camera.position.x - PLAYER_RADIUS < bounds.x1 ||
+            camera.position.x + PLAYER_RADIUS > bounds.x2 ||
+            camera.position.z - PLAYER_RADIUS < bounds.z1 ||
+            camera.position.z + PLAYER_RADIUS > bounds.z2;
+
+        if (outside) {
+            camera.position.copy(spawnPoint);
+        }
+
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        forward.y = 0;
+        forward.normalize();
+
+        const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
+
+        const motion = new THREE.Vector3();
+
+        if (keys.KeyW || keys.ArrowUp) motion.add(forward);
+        if (keys.KeyS || keys.ArrowDown) motion.sub(forward);
+        if (keys.KeyD || keys.ArrowRight) motion.add(right);
+        if (keys.KeyA || keys.ArrowLeft) motion.sub(right);
+
+        if (motion.lengthSq() === 0) return;
+
+        motion.normalize();
+
+        const speed = (keys.ShiftLeft || keys.ShiftRight ? 6.5 : 3.4) * delta;
+
+        const nx = camera.position.x + motion.x * speed;
+        const nz = camera.position.z + motion.z * speed;
+
+        if (!blockedAt(nx, camera.position.z)) camera.position.x = nx;
+        if (!blockedAt(camera.position.x, nz)) camera.position.z = nz;
+
+        camera.position.y = EYE_HEIGHT;
+    }
+
+    function containingRoom(x, z) {
+        for (const ref of rooms.values()) {
+            if (
+                Math.abs(x - ref.cx) < ref.w / 2 - 0.25 &&
+                Math.abs(z - ref.cz) < ref.d / 2 - 0.25
+            ) {
+                return ref;
+            }
+        }
+
+        return null;
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /* Presence: walking into a room triggers its sensors                     */
+    /* ---------------------------------------------------------------------- */
+
+    function updatePresence() {
+        let roomId = null;
+
+        if (isVisible() && walkMode && fp.isLocked) {
+            const ref = containingRoom(camera.position.x, camera.position.z);
+            roomId = ref?.room.id ?? null;
+        }
+
+        currentRoomId = roomId;
+
+        const ref = roomId ? rooms.get(roomId) : null;
+
+        const statRoom = document.getElementById("sim-room");
+
+        if (ref) {
+            roomBadge.textContent = `📍 ${ref.room.name}`;
+            roomBadge.classList.remove("hidden");
+            if (statRoom) statRoom.textContent = ref.room.name;
+        } else {
+            roomBadge.classList.add("hidden");
+            if (statRoom) statRoom.textContent = "the corridor";
+        }
+
+        if (roomId === lastPresence) return;
+        lastPresence = roomId;
+
+        fetch("/api/presence", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ player_id: playerId, room_id: roomId })
+        }).catch(() => {});
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /* Interaction (E key)                                                    */
+    /* ---------------------------------------------------------------------- */
+
+    function nearestInteractable() {
+        const x = camera.position.x;
+        const z = camera.position.z;
+        let best = null;
+
+        for (const ref of rooms.values()) {
+            const options = [];
+
+            if (deviceExists(ref.room.id, "door_lock")) {
+                options.push({
+                    actuator: "door_lock",
+                    x: ref.doorX,
+                    z: ref.doorZ,
+                    on: () => "🔒 Lock door",
+                    off: () => "🔓 Unlock door"
+                });
+            }
+
+            if (deviceExists(ref.room.id, "lights")) {
+                options.push({
+                    actuator: "lights",
+                    x: ref.cx,
+                    z: ref.cz,
+                    on: () => "💡 Turn lights off",
+                    off: () => "💡 Turn lights on"
+                });
+            }
+
+            if (ref.isGarage && deviceExists(ref.room.id, "garage_door")) {
+                options.push({
+                    actuator: "garage_door",
+                    x: ref.doorX,
+                    z: ref.doorZ,
+                    on: () => "🚪 Close garage door",
+                    off: () => "🚪 Open garage door"
+                });
+            }
+
+            for (const option of options) {
+                const distance = Math.hypot(x - option.x, z - option.z);
+
+                if (distance <= 2.6 && (!best || distance < best.distance)) {
+                    best = { ...option, ref, distance };
+                }
+            }
+        }
+
+        return best;
+    }
+
+    async function interact() {
+        const target = nearestInteractable();
+        if (!target) return;
+
+        const roomId = target.ref.room.id;
+        const enabled = stateValue(target.ref, target.actuator, "enabled", false) === true;
+        const next = !enabled;
+
+        // Optimistic local update so doors feel instant; expires after 4s,
+        // after which the real MQTT state takes over again.
+        target.ref.overrides[target.actuator] = {
+            value: next,
+            until: performance.now() + 4000
+        };
+
+        applyStates();
+
+        await fetch(`/api/room/${roomId}/actuator/${target.actuator}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ enabled: next })
+        }).catch(() => {});
+    }
+
+    function updatePrompt(delta) {
+        promptTimer -= delta;
+        if (promptTimer > 0) return;
+        promptTimer = 0.2;
+
+        if (!walkMode || !fp.isLocked) {
+            promptBox.classList.add("hidden");
+            nearestTarget = null;
+            return;
+        }
+
+        nearestTarget = nearestInteractable();
+
+        if (!nearestTarget) {
+            promptBox.classList.add("hidden");
+            return;
+        }
+
+        const enabled = stateValue(
+            nearestTarget.ref,
+            nearestTarget.actuator,
+            "enabled",
+            false
+        ) === true;
+
+        const label = enabled
+            ? nearestTarget.on()
+            : nearestTarget.off();
+
+        promptBox.textContent = `Press E — ${label}`;
+        promptBox.classList.remove("hidden");
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /* Animation                                                              */
+    /* ---------------------------------------------------------------------- */
+
+    let previousTime = performance.now();
+
+    function animateShutters(delta) {
+        for (const ref of rooms.values()) {
+            if (!ref.shutter) continue;
+
+            const target = Math.max(0, Math.min(100, ref.openPercent));
+            const scaleY = Math.max(0.06, 1 - target / 100);
+            const fullHeight = ref.shutter.geometry.parameters.height;
+
+            ref.shutter.scale.y += (scaleY - ref.shutter.scale.y) * Math.min(1, delta * 6);
+            ref.shutter.position.y = ref.doorTop - (fullHeight * ref.shutter.scale.y) / 2;
+        }
+    }
+
+    function spinFans(delta) {
+        for (const ref of rooms.values()) {
+            if (ref.fan && ref.fanOn) {
+                ref.fan.rotation.y += delta * 9;
+            }
+        }
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        if (!renderer || !isVisible()) return;
+
+        const now = performance.now();
+        const delta = Math.min(0.05, (now - previousTime) / 1000);
+        previousTime = now;
+
+        if (builtKey !== buildKey()) {
+            rebuild();
+        }
+
+        if (walkMode && fp.isLocked) {
+            movePlayer(delta);
+        }
+
+        updatePresence();
+        updatePrompt(delta);
+        animateShutters(delta);
+        spinFans(delta);
+
+        if (orbit.enabled) orbit.update();
+
+        renderer.render(scene, camera);
+    }
+
+    // Registered at module load, NOT inside ensureInit(): the dashboard tab
+    // handler fires SIM.onTabVisible on the first visit to the 3D tab and
+    // must be able to bootstrap the renderer from there.
+    SIM.onTabVisible = () => {
+        ensureInit();
+        resize();
+
+        if (builtKey === buildKey()) {
+            return;
+        }
+
+        rebuild();
+    };
+
+    // The dashboard pushes fresh MQTT state through this hook.
+    SIM.onUpdate = () => {
+        if (renderer) applyStates();
+    };
+
+    // The tab is hidden on load, so normally nothing runs until it is opened.
+    if (isVisible()) ensureInit();
 </script>
 </body>
 </html>
