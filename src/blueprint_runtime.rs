@@ -1,23 +1,26 @@
 use crate::{
     BUILDING_ID, MqttMessage,
-    blueprints::{Blueprint, BlueprintEdge, BlueprintNode, BlueprintStore},
+    blueprints::{Blueprint, BlueprintEdge, BlueprintNode, BlueprintStore, DeviceKind},
 };
 use rumqttc::{AsyncClient, QoS};
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
 
+/// Runs enabled scripts after a sensor measurement arrives.
+///
+/// `topic_cache` contains the latest message for every MQTT topic,
+/// so a graph can use multiple sensors in one evaluation.
 pub async fn execute_blueprints(
     client: &AsyncClient,
     store: &BlueprintStore,
-    topic: &str,
-    message: &MqttMessage,
+    topic_cache: &HashMap<String, MqttMessage>,
 ) {
     for blueprint in &store.blueprints {
         if !blueprint.enabled {
             continue;
         }
 
-        execute_blueprint(client, store, blueprint, topic, message).await;
+        execute_blueprint(client, store, blueprint, topic_cache).await;
     }
 }
 
@@ -25,44 +28,57 @@ async fn execute_blueprint(
     client: &AsyncClient,
     store: &BlueprintStore,
     blueprint: &Blueprint,
-    changed_topic: &str,
-    message: &MqttMessage,
+    topic_cache: &HashMap<String, MqttMessage>,
 ) {
     let mut values: HashMap<String, Value> = HashMap::new();
 
+    /* Seed all source nodes. */
     for node in &blueprint.nodes {
-        if node.node_type == "sensor" {
-            let Some(device_id) = node.data["device_id"].as_str() else {
-                continue;
-            };
+        match node.node_type.as_str() {
+            "sensor" => {
+                let Some(device_id) = node.data["device_id"].as_str() else {
+                    continue;
+                };
 
-            let Some(device) = store.devices.iter().find(|d| d.id == device_id) else {
-                continue;
-            };
+                let Some(device) = store
+                    .devices
+                    .iter()
+                    .find(|device| device.id == device_id && device.kind == DeviceKind::Sensor)
+                else {
+                    continue;
+                };
 
-            if device.mqtt_topic == changed_topic {
-                let sensor_value = extract_sensor_value(message);
-                values.insert(format!("{}:value", node.id), sensor_value);
+                let Some(message) = topic_cache.get(&device.mqtt_topic) else {
+                    continue;
+                };
+
+                if let Some(value) = extract_sensor_value(message) {
+                    values.insert(format!("{}:value", node.id), value);
+                }
             }
-        }
 
-        if node.node_type == "constant_number" {
-            values.insert(format!("{}:value", node.id), node.data["value"].clone());
-        }
+            "constant_number" | "constant_boolean" => {
+                if let Some(value) = node.data.get("value") {
+                    values.insert(format!("{}:value", node.id), value.clone());
+                }
+            }
 
-        if node.node_type == "constant_boolean" {
-            values.insert(format!("{}:value", node.id), node.data["value"].clone());
+            _ => {}
         }
     }
 
-    // A production-grade version should topologically sort the graph.
-    // This MVP resolves nodes repeatedly so simple chains work.
+    /*
+     * Resolve logic nodes repeatedly.
+     * This supports normal acyclic Blueprint-style chains without
+     * needing a topological sort implementation yet.
+     */
     for _ in 0..blueprint.nodes.len() {
         for node in &blueprint.nodes {
             evaluate_node(node, &blueprint.edges, &mut values);
         }
     }
 
+    /* Send commands to configured actuator nodes. */
     for node in &blueprint.nodes {
         if node.node_type != "actuator" {
             continue;
@@ -76,13 +92,11 @@ async fn execute_blueprint(
             continue;
         };
 
-        let Some(device) = store.devices.iter().find(|d| d.id == device_id) else {
+        let Some(device) = store.devices.iter().find(|device| {
+            device.id == device_id && device.kind == DeviceKind::Actuator && device.enabled
+        }) else {
             continue;
         };
-
-        if !device.enabled {
-            continue;
-        }
 
         let command = MqttMessage {
             timestamp: chrono::Utc::now(),
@@ -96,17 +110,24 @@ async fn execute_blueprint(
             metadata: Map::from_iter([
                 ("blueprint_id".to_string(), json!(blueprint.id)),
                 ("blueprint_name".to_string(), json!(blueprint.name)),
+                ("reason".to_string(), json!("blueprint_graph_evaluation")),
             ]),
         };
 
-        let _ = client
+        if let Err(error) = client
             .publish(
                 &device.mqtt_topic,
                 QoS::AtLeastOnce,
                 false,
                 serde_json::to_vec(&command).unwrap(),
             )
-            .await;
+            .await
+        {
+            eprintln!(
+                "Blueprint '{}' could not publish actuator command: {error}",
+                blueprint.name
+            );
+        }
     }
 }
 
@@ -117,20 +138,20 @@ fn evaluate_node(
 ) {
     match node.node_type.as_str() {
         "compare_greater" => {
-            let left = get_input_number(node, edges, values, "a");
-            let right = get_input_number(node, edges, values, "b");
+            let a = get_input_number(node, edges, values, "a");
+            let b = get_input_number(node, edges, values, "b");
 
-            if let (Some(left), Some(right)) = (left, right) {
-                values.insert(format!("{}:result", node.id), json!(left > right));
+            if let (Some(a), Some(b)) = (a, b) {
+                values.insert(format!("{}:result", node.id), json!(a > b));
             }
         }
 
         "compare_less" => {
-            let left = get_input_number(node, edges, values, "a");
-            let right = get_input_number(node, edges, values, "b");
+            let a = get_input_number(node, edges, values, "a");
+            let b = get_input_number(node, edges, values, "b");
 
-            if let (Some(left), Some(right)) = (left, right) {
-                values.insert(format!("{}:result", node.id), json!(left < right));
+            if let (Some(a), Some(b)) = (a, b) {
+                values.insert(format!("{}:result", node.id), json!(a < b));
             }
         }
 
@@ -189,12 +210,12 @@ fn get_input_boolean(
     get_input_value(node, edges, values, input_handle)?.as_bool()
 }
 
-fn extract_sensor_value(message: &MqttMessage) -> Value {
+fn extract_sensor_value(message: &MqttMessage) -> Option<Value> {
     for field in ["temperature_c", "humidity_percent", "co2_ppm", "occupied"] {
         if let Some(value) = message.value.get(field) {
-            return value.clone();
+            return Some(value.clone());
         }
     }
 
-    Value::Null
+    None
 }

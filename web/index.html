@@ -661,6 +661,82 @@
                 min-height: 600px;
             }
         }
+
+        .automation-summary {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .automation-stat {
+            padding: 13px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 9px;
+            background: rgba(0, 0, 0, 0.16);
+        }
+
+        .automation-stat span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+        }
+
+        .automation-stat strong {
+            display: block;
+            margin-top: 7px;
+            font-size: 1.08rem;
+        }
+
+        .automation-script-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .automation-script {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            padding: 11px 13px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 9px;
+            background: rgba(0, 0, 0, 0.12);
+        }
+
+        .automation-script-name {
+            font-weight: 700;
+        }
+
+        .automation-script-detail {
+            margin-top: 3px;
+            color: var(--muted);
+            font-size: 0.76rem;
+        }
+
+        .script-status {
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 800;
+        }
+
+        .script-status.enabled {
+            color: #b9f8d9;
+            background: rgba(49, 209, 132, 0.16);
+        }
+
+        .script-status.disabled {
+            color: #ffb6bd;
+            background: rgba(255, 102, 116, 0.16);
+        }
+
+        @media (max-width: 850px) {
+            .automation-summary {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
     </style>
 </head>
 
@@ -700,6 +776,35 @@
         </div>
 
         <div class="panel" style="margin-top: 18px;">
+            <h2>Automation Overview</h2>
+
+            <div class="automation-summary">
+                <div class="automation-stat">
+                    <span>Enabled scripts</span>
+                    <strong id="automation-enabled-count">0</strong>
+                </div>
+
+                <div class="automation-stat">
+                    <span>Blueprint nodes</span>
+                    <strong id="automation-node-count">0</strong>
+                </div>
+
+                <div class="automation-stat">
+                    <span>Blueprint links</span>
+                    <strong id="automation-edge-count">0</strong>
+                </div>
+
+                <div class="automation-stat">
+                    <span>Last script command</span>
+                    <strong id="automation-last-command">Waiting</strong>
+                </div>
+            </div>
+
+            <div id="automation-script-list" class="automation-script-list"></div>
+        </div>
+
+        <div class="panel" style="margin-top: 18px;">
+
             <h2>System Events</h2>
             <div id="event-list" class="event-list">
                 <p class="empty">Waiting for MQTT events …</p>
@@ -1082,6 +1187,8 @@
             ROOMS.forEach(room => updateRoomDashboard(room, topics));
             renderDeviceActivity(topics);
             updateEvents(events);
+
+            renderAutomationOverview(events);
 
             document.getElementById("connection-dot").className = "dot online";
             setText("connection-text", "MQTT dashboard online");
@@ -2004,6 +2111,67 @@
         };
     }
 
+    function renderAutomationOverview(events) {
+        const enabledScripts = blueprints.filter(script => script.enabled);
+
+        const nodeCount = blueprints.reduce(
+            (total, script) => total + script.nodes.length,
+            0
+        );
+
+        const edgeCount = blueprints.reduce(
+            (total, script) => total + script.edges.length,
+            0
+        );
+
+        const lastBlueprintCommand = [...events]
+            .reverse()
+            .find(event =>
+                event.device_id?.startsWith("blueprint-") ||
+                event.metadata?.blueprint_id
+            );
+
+        setText("automation-enabled-count", enabledScripts.length);
+        setText("automation-node-count", nodeCount);
+        setText("automation-edge-count", edgeCount);
+
+        setText(
+            "automation-last-command",
+            lastBlueprintCommand
+                ? new Date(lastBlueprintCommand.timestamp).toLocaleTimeString()
+                : "Waiting"
+        );
+
+        const container = document.getElementById("automation-script-list");
+
+        if (!blueprints.length) {
+            container.innerHTML = `
+                <p class="empty">
+                    No scripts created. Open the Blueprint Scripts tab to create automation.
+                </p>
+            `;
+            return;
+        }
+
+        container.innerHTML = blueprints.map(script => `
+            <div class="automation-script">
+                <div>
+                    <div class="automation-script-name">
+                        ${escapeHtml(script.name)}
+                    </div>
+
+                    <div class="automation-script-detail">
+                        ${script.nodes.length} nodes · ${script.edges.length} links
+                    </div>
+                </div>
+
+                <span class="script-status ${script.enabled ? "enabled" : "disabled"}">
+                    ${script.enabled ? "ENABLED" : "DISABLED"}
+                </span>
+            </div>
+        `).join("");
+    }
+
     window.addEventListener("resize", renderEdges);
 
     /* ---------------------------------------------------------------------- */
@@ -2014,12 +2182,15 @@
         setupDashboard();
         updateDeviceTypeOptions();
 
-        await loadDevices();
+        await Promise.all([
+            loadDevices(),
+            loadBlueprints()
+        ]);
+
         await refreshDashboard();
 
         window.setInterval(refreshDashboard, 2000);
     }
-
     initialiseApplication();
 </script>
 </body>

@@ -197,7 +197,15 @@ async fn delete_blueprint(
 async fn main() {
     let dashboard_mqtt = create_client("dashboard-service", true);
 
-    let saved_blueprints = load_store().await;
+    let mut saved_blueprints = load_store().await;
+
+    if saved_blueprints.devices.is_empty() {
+        saved_blueprints = default_blueprint_store();
+
+        if let Err(error) = save_store(&saved_blueprints).await {
+            eprintln!("Could not persist default blueprint devices: {error}");
+        }
+    }
 
     let state = AppState {
         mqtt: dashboard_mqtt.0.clone(),
@@ -461,6 +469,13 @@ async fn controller_service(room: String) {
                 let Ok(message) = serde_json::from_slice::<MqttMessage>(&publish.payload) else {
                     continue;
                 };
+
+                let is_sensor_message = publish.topic.contains("/sensor/");
+                let is_config_message = publish.topic.ends_with("/config");
+
+                if !is_sensor_message && !is_config_message {
+                    continue;
+                }
 
                 if publish.topic.ends_with("/sensor/temperature") {
                     temperature = message.value["temperature_c"]
@@ -740,15 +755,13 @@ async fn dashboard_observer(state: AppState) {
                         .await
                         .insert(publish.topic.clone(), message.clone());
 
-                    let store = state.blueprints.read().await.clone();
+                    if publish.topic.contains("/sensor/") {
+                        let topic_cache = state.topics.read().await.clone();
+                        let store = state.blueprints.read().await.clone();
 
-                    blueprint_runtime::execute_blueprints(
-                        &state.mqtt,
-                        &store,
-                        &publish.topic,
-                        &message,
-                    )
-                    .await;
+                        blueprint_runtime::execute_blueprints(&state.mqtt, &store, &topic_cache)
+                            .await;
+                    }
 
                     if publish.topic.ends_with("/event") || publish.topic.ends_with("/availability")
                     {
@@ -884,4 +897,50 @@ const DASHBOARD_HTML: &str = include_str!("../web/index.html");
 
 async fn index() -> Html<&'static str> {
     Html(DASHBOARD_HTML)
+}
+
+fn default_blueprint_store() -> BlueprintStore {
+    let mut devices = Vec::new();
+
+    for room in ROOMS {
+        for (name, device_type) in [
+            ("Temperature Sensor", "temperature"),
+            ("Humidity Sensor", "humidity"),
+            ("CO₂ Sensor", "co2"),
+            ("Occupancy Sensor", "occupancy"),
+        ] {
+            devices.push(Device {
+                id: format!("{room}-sensor-{device_type}"),
+                room_id: room.to_string(),
+                name: format!("{name} ({room})"),
+                kind: DeviceKind::Sensor,
+                device_type: device_type.to_string(),
+                mqtt_topic: format!("building/{BUILDING_ID}/room/{room}/sensor/{device_type}"),
+                enabled: true,
+            });
+        }
+
+        for (name, device_type) in [
+            ("Heating", "heating"),
+            ("Ventilation", "ventilation"),
+            ("Lights", "lights"),
+        ] {
+            devices.push(Device {
+                id: format!("{room}-actuator-{device_type}"),
+                room_id: room.to_string(),
+                name: format!("{name} ({room})"),
+                kind: DeviceKind::Actuator,
+                device_type: device_type.to_string(),
+                mqtt_topic: format!(
+                    "building/{BUILDING_ID}/room/{room}/actuator/{device_type}/command"
+                ),
+                enabled: true,
+            });
+        }
+    }
+
+    BlueprintStore {
+        devices,
+        blueprints: Vec::new(),
+    }
 }
