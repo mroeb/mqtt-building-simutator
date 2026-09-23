@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Building Control Center</title>
+
+    <style>
+        :root {
+            --bg: #08111e;
+            --surface: #101d2e;
+            --surface-2: #15263b;
+            --border: #29415c;
+            --text: #e7f0f8;
+            --muted: #90a5ba;
+            --blue: #35a6ff;
+            --green: #31d184;
+            --orange: #ffb24c;
+            --red: #ff6674;
+            --purple: #a78bfa;
+            --node-width: 220px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            color: var(--text);
+            font-family: Inter, Arial, sans-serif;
+            background:
+                radial-gradient(circle at top right, #173c59 0%, transparent 30%),
+                radial-gradient(circle at bottom left, #142d45 0%, transparent 35%),
+                var(--bg);
+        }
+
+        button,
+        input,
+        select {
+            font: inherit;
+        }
+
+        button {
+            border: 0;
+            border-radius: 7px;
+            padding: 9px 13px;
+            color: white;
+            background: #236aa1;
+            cursor: pointer;
+            transition: filter 0.15s ease, transform 0.15s ease;
+        }
+
+        button:hover {
+            filter: brightness(1.12);
+            transform: translateY(-1px);
+        }
+
+        button.secondary {
+            background: #40556d;
+        }
+
+        button.success {
+            background: #177b4f;
+        }
+
+        button.warning {
+            background: #9a6630;
+        }
+
+        button.danger {
+            background: #983f4a;
+        }
+
+        button.small {
+            padding: 6px 9px;
+            font-size: 0.78rem;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 9px 10px;
+            color: var(--text);
+            background: #091726;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            outline: none;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(53, 166, 255, 0.15);
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            padding: 16px 32px;
+            background: rgba(8, 17, 30, 0.94);
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(14px);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.25rem;
+        }
+
+        header p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        .connection {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--orange);
+        }
+
+        .dot.online {
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+        }
+
+        .dot.offline {
+            background: var(--red);
+            box-shadow: 0 0 10px var(--red);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 6px;
+            padding: 14px 32px;
+            background: rgba(8, 17, 30, 0.7);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            color: var(--muted);
+            background: transparent;
+        }
+
+        .tab.active {
+            color: white;
+            background: #1a4c74;
+        }
+
+        main {
+            padding: 24px 32px 50px;
+        }
+
+        .view {
+            display: none;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        .grid {
+            display: grid;
+            gap: 18px;
+        }
+
+        .dashboard-grid {
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+        }
+
+        .panel {
+            padding: 18px;
+            background: linear-gradient(145deg, var(--surface-2), var(--surface));
+            border: 1px solid var(--border);
+            border-radius: 13px;
+        }
+
+        .panel h2,
+        .panel h3 {
+            margin-top: 0;
+        }
+
+        .panel h2 {
+            font-size: 1rem;
+        }
+
+        .room-card {
+            overflow: hidden;
+            padding: 0;
+        }
+
+        .room-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 17px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .room-header h2 {
+            margin: 0;
+        }
+
+        .room-content {
+            padding: 17px;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 9px;
+        }
+
+        .metric {
+            padding: 11px;
+            background: rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 9px;
+        }
+
+        .metric-label {
+            display: block;
+            color: var(--muted);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            display: block;
+            margin-top: 6px;
+            font-size: 1rem;
+        }
+
+        .co2-bar {
+            height: 5px;
+            margin-top: 8px;
+            overflow: hidden;
+            background: #26384b;
+            border-radius: 999px;
+        }
+
+        .co2-fill {
+            width: 0;
+            height: 100%;
+            background: var(--green);
+            transition: width 0.4s ease, background 0.4s ease;
+        }
+
+        .actuators {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 9px;
+            margin-top: 16px;
+        }
+
+        .actuator {
+            padding: 11px;
+            background: rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 9px;
+        }
+
+        .actuator.active {
+            border-color: rgba(49, 209, 132, 0.55);
+            background: rgba(49, 209, 132, 0.08);
+        }
+
+        .actuator-name {
+            display: block;
+            color: var(--muted);
+            font-size: 0.75rem;
+        }
+
+        .actuator-state {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-top: 7px;
+            font-weight: bold;
+        }
+
+        .actuator-indicator {
+            width: 9px;
+            height: 9px;
+            background: #647789;
+            border-radius: 50%;
+        }
+
+        .actuator.active .actuator-indicator {
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+        }
+
+        .availability {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .device-list {
+            display: grid;
+            gap: 9px;
+            margin-top: 18px;
+        }
+
+        .device-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.16);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 9px;
+        }
+
+        .device-title {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-weight: bold;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 7px;
+            border-radius: 99px;
+            font-size: 0.68rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .badge.sensor {
+            color: #a8dbff;
+            background: rgba(53, 166, 255, 0.18);
+        }
+
+        .badge.actuator {
+            color: #b6f5d5;
+            background: rgba(49, 209, 132, 0.16);
+        }
+
+        .device-topic {
+            margin-top: 4px;
+            color: var(--muted);
+            font-family: Consolas, monospace;
+            font-size: 0.72rem;
+        }
+
+        /* Blueprint editor */
+        .blueprint-layout {
+            display: grid;
+            grid-template-columns: 265px minmax(0, 1fr) 290px;
+            gap: 15px;
+            min-height: 720px;
+        }
+
+        .blueprint-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .node-library {
+            display: grid;
+            gap: 8px;
+        }
+
+        .library-button {
+            width: 100%;
+            text-align: left;
+            background: #183650;
+        }
+
+        .library-button.sensor {
+            border-left: 4px solid var(--blue);
+        }
+
+        .library-button.logic {
+            border-left: 4px solid var(--purple);
+        }
+
+        .library-button.actuator {
+            border-left: 4px solid var(--green);
+        }
+
+        .blueprint-canvas-wrap {
+            position: relative;
+            min-width: 0;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            background:
+                linear-gradient(rgba(42, 69, 95, 0.25) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(42, 69, 95, 0.25) 1px, transparent 1px),
+                #071421;
+            background-size: 25px 25px;
+        }
+
+        .canvas-toolbar {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 20;
+            display: flex;
+            gap: 7px;
+        }
+
+        #blueprint-canvas {
+            position: relative;
+            width: 1800px;
+            height: 1100px;
+            transform-origin: top left;
+        }
+
+        #edge-layer {
+            position: absolute;
+            inset: 0;
+            width: 1800px;
+            height: 1100px;
+            overflow: visible;
+            pointer-events: none;
+        }
+
+        .edge {
+            fill: none;
+            stroke: #75bdf3;
+            stroke-width: 3;
+            pointer-events: stroke;
+        }
+
+        .edge.boolean {
+            stroke: #a78bfa;
+        }
+
+        .edge.selected {
+            stroke: var(--orange);
+            stroke-width: 5;
+        }
+
+        .blueprint-node {
+            position: absolute;
+            width: var(--node-width);
+            overflow: visible;
+            background: #13283d;
+            border: 1px solid #35536f;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.28);
+            user-select: none;
+        }
+
+        .blueprint-node.selected {
+            border-color: var(--orange);
+            box-shadow: 0 0 0 2px rgba(255, 178, 76, 0.25);
+        }
+
+        .node-header {
+            padding: 9px 11px;
+            font-size: 0.78rem;
+            font-weight: bold;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: grab;
+        }
+
+        .node-header:active {
+            cursor: grabbing;
+        }
+
+        .node-header.sensor {
+            background: #18517c;
+        }
+
+        .node-header.logic {
+            background: #5b4699;
+        }
+
+        .node-header.actuator {
+            background: #176143;
+        }
+
+        .node-content {
+            padding: 11px;
+        }
+
+        .node-content select,
+        .node-content input {
+            margin-bottom: 8px;
+            font-size: 0.76rem;
+        }
+
+        .pin-row {
+            position: relative;
+            display: flex;
+            align-items: center;
+            min-height: 28px;
+            color: #c1d1df;
+            font-size: 0.77rem;
+        }
+
+        .pin-row.output {
+            justify-content: flex-end;
+            text-align: right;
+        }
+
+        .pin {
+            position: absolute;
+            z-index: 5;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #dceefe;
+            border-radius: 50%;
+            cursor: crosshair;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .pin:hover {
+            transform: scale(1.25);
+        }
+
+        .pin.input {
+            left: -18px;
+        }
+
+        .pin.output {
+            right: -18px;
+        }
+
+        .pin.number {
+            background: var(--blue);
+        }
+
+        .pin.boolean {
+            background: var(--purple);
+        }
+
+        .pin.connecting {
+            box-shadow: 0 0 0 4px rgba(255, 178, 76, 0.3);
+            background: var(--orange);
+        }
+
+        .port-type {
+            margin-left: 6px;
+            color: var(--muted);
+            font-size: 0.65rem;
+        }
+
+        .blueprint-list {
+            display: grid;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .blueprint-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 9px;
+            background: rgba(0, 0, 0, 0.16);
+            border: 1px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .blueprint-item:hover,
+        .blueprint-item.active {
+            border-color: var(--blue);
+            background: rgba(53, 166, 255, 0.1);
+        }
+
+        .help {
+            color: var(--muted);
+            font-size: 0.78rem;
+            line-height: 1.5;
+        }
+
+        .event-list {
+            max-height: 310px;
+            overflow-y: auto;
+        }
+
+        .event {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 0.82rem;
+        }
+
+        .event-time {
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 0.72rem;
+        }
+
+        .empty {
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 1200px) {
+            .blueprint-layout {
+                grid-template-columns: 230px minmax(0, 1fr);
+            }
+
+            .blueprint-right {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 760px) {
+            main,
+            .tabs {
+                padding-left: 15px;
+                padding-right: 15px;
+            }
+
+            header {
+                align-items: flex-start;
+                flex-direction: column;
+                padding: 15px;
+            }
+
+            .form-grid,
+            .metrics,
+            .actuators,
+            .blueprint-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .blueprint-canvas-wrap {
+                min-height: 600px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<header>
+    <div>
+        <h1>Smart Building Control Center</h1>
+        <p>MQTT simulation, dynamic devices and visual automation blueprints</p>
+    </div>
+
+    <div class="connection">
+        <span id="connection-dot" class="dot"></span>
+        <span id="connection-text">Connecting …</span>
+    </div>
+</header>
+
+<nav class="tabs">
+    <button class="tab active" data-view="dashboard">Dashboard</button>
+    <button class="tab" data-view="devices">Devices</button>
+    <button class="tab" data-view="blueprints">Blueprint Scripts</button>
+</nav>
+
+<main>
+    <!-- Dashboard -->
+    <section id="view-dashboard" class="view active">
+        <div id="room-dashboard" class="grid dashboard-grid"></div>
+
+        <div class="panel" style="margin-top: 18px;">
+            <h2>System Events</h2>
+            <div id="event-list" class="event-list">
+                <p class="empty">Waiting for MQTT events …</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Device management -->
+    <section id="view-devices" class="view">
+        <div class="panel">
+            <h2>Add Sensor or Actuator</h2>
+
+            <form id="device-form" class="form-grid">
+                <input id="device-name" required placeholder="Display name, e.g. CO₂ Sensor">
+
+                <select id="device-room">
+                    <option value="room-101">Room 101</option>
+                    <option value="room-102">Room 102</option>
+                </select>
+
+                <select id="device-kind">
+                    <option value="sensor">Sensor</option>
+                    <option value="actuator">Actuator</option>
+                </select>
+
+                <select id="device-type">
+                    <option value="temperature">Temperature</option>
+                    <option value="humidity">Humidity</option>
+                    <option value="co2">CO₂</option>
+                    <option value="occupancy">Occupancy</option>
+                    <option value="heating">Heating</option>
+                    <option value="ventilation">Ventilation</option>
+                    <option value="lights">Lights</option>
+                </select>
+
+                <button type="submit" class="success">Add Device</button>
+            </form>
+
+            <p class="help">
+                Each device receives a unique ID and MQTT topic from the server.
+                Sensor devices can be used as blueprint inputs. Actuators can be controlled by blueprint outputs.
+            </p>
+        </div>
+
+        <div class="panel" style="margin-top: 18px;">
+            <h2>Registered Devices</h2>
+            <div id="device-list" class="device-list"></div>
+        </div>
+    </section>
+
+    <!-- Blueprint editor -->
+    <section id="view-blueprints" class="view">
+        <div class="blueprint-layout">
+            <aside class="blueprint-sidebar">
+                <div class="panel">
+                    <h3>Scripts</h3>
+
+                    <div style="display:flex; gap:8px;">
+                        <input id="new-blueprint-name" placeholder="New script name">
+                        <button id="create-blueprint-button" class="success small">New</button>
+                    </div>
+
+                    <div id="blueprint-list" class="blueprint-list"></div>
+                </div>
+
+                <div class="panel">
+                    <h3>Node Library</h3>
+
+                    <div class="node-library">
+                        <button class="library-button sensor" data-node-type="sensor">
+                            📡 Sensor
+                        </button>
+
+                        <button class="library-button actuator" data-node-type="actuator">
+                            ⚡ Actuator
+                        </button>
+
+                        <button class="library-button logic" data-node-type="constant_number">
+                            123 Number Constant
+                        </button>
+
+                        <button class="library-button logic" data-node-type="constant_boolean">
+                            True / False Constant
+                        </button>
+
+                        <button class="library-button logic" data-node-type="compare_greater">
+                            A &gt; B
+                        </button>
+
+                        <button class="library-button logic" data-node-type="compare_less">
+                            A &lt; B
+                        </button>
+
+                        <button class="library-button logic" data-node-type="boolean_and">
+                            Boolean AND
+                        </button>
+
+                        <button class="library-button logic" data-node-type="boolean_or">
+                            Boolean OR
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="blueprint-canvas-wrap">
+                <div class="canvas-toolbar">
+                    <button id="save-blueprint-button" class="success small">Save Script</button>
+                    <button id="delete-selected-node-button" class="danger small">Delete Node</button>
+                    <button id="clear-blueprint-button" class="warning small">Clear</button>
+                </div>
+
+                <div id="blueprint-canvas">
+                    <svg id="edge-layer"></svg>
+                    <div id="node-layer"></div>
+                </div>
+            </section>
+
+            <aside class="blueprint-right">
+                <div class="panel">
+                    <h3>Blueprint Help</h3>
+                    <p class="help">
+                        1. Create or select a script.<br>
+                        2. Add nodes from the library.<br>
+                        3. Drag nodes by their header.<br>
+                        4. Click an output pin, then a matching input pin.<br>
+                        5. Save the script.
+                    </p>
+
+                    <p class="help">
+                        <strong>Blue pins:</strong> numeric values<br>
+                        <strong>Purple pins:</strong> boolean values
+                    </p>
+
+                    <p class="help">
+                        Example:<br>
+                        <code>CO₂ Sensor → A &gt; B → Ventilation</code><br>
+                        Connect a number constant of <code>1000</code> to input <code>B</code>.
+                    </p>
+                </div>
+
+                <div class="panel" style="margin-top:15px;">
+                    <h3>Selected Script</h3>
+                    <div id="selected-blueprint-info" class="help">
+                        No script selected.
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </section>
+</main>
+
+<script>
+    const ROOMS = ["room-101", "room-102"];
+
+    let devices = [];
+    let blueprints = [];
+    let activeBlueprint = null;
+
+    let selectedNodeId = null;
+    let pendingConnection = null;
+
+    const nodeLayer = document.getElementById("node-layer");
+    const edgeLayer = document.getElementById("edge-layer");
+
+    /* ---------------------------------------------------------------------- */
+    /* Tab navigation                                                         */
+    /* ---------------------------------------------------------------------- */
+
+    document.querySelectorAll(".tab").forEach(button => {
+        button.addEventListener("click", () => {
+            const viewName = button.dataset.view;
+
+            document.querySelectorAll(".tab").forEach(tab => {
+                tab.classList.toggle("active", tab === button);
+            });
+
+            document.querySelectorAll(".view").forEach(view => {
+                view.classList.toggle("active", view.id === `view-${viewName}`);
+            });
+
+            if (viewName === "devices") loadDevices();
+            if (viewName === "blueprints") loadBlueprints();
+        });
+    });
+
+    /* ---------------------------------------------------------------------- */
+    /* Dashboard                                                              */
+    /* ---------------------------------------------------------------------- */
+
+    function getTopic(topics, suffix) {
+        const key = Object.keys(topics).find(topic => topic.endsWith(suffix));
+        return key ? topics[key] : null;
+    }
+
+    function getValue(topics, suffix, field, fallback = null) {
+        return getTopic(topics, suffix)?.value?.[field] ?? fallback;
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+
+    function roomDashboardHtml(room) {
+        const label = room.replace("room-", "Room ");
+
+        return `
+            <article class="panel room-card">
+                <div class="room-header">
+                    <div>
+                        <h2>${label}</h2>
+                        <span class="help">Live MQTT room state</span>
+                    </div>
+
+                    <div class="availability">
+                        <span id="availability-dot-${room}" class="dot"></span>
+                        <span id="availability-${room}">Unknown</span>
+                    </div>
+                </div>
+
+                <div class="room-content">
+                    <div class="metrics">
+                        <div class="metric">
+                            <span class="metric-label">Temperature</span>
+                            <strong id="temperature-${room}" class="metric-value">– °C</strong>
+                        </div>
+
+                        <div class="metric">
+                            <span class="metric-label">Humidity</span>
+                            <strong id="humidity-${room}" class="metric-value">– %</strong>
+                        </div>
+
+                        <div class="metric">
+                            <span class="metric-label">CO₂</span>
+                            <strong id="co2-${room}" class="metric-value">– ppm</strong>
+                            <div class="co2-bar">
+                                <div id="co2-bar-${room}" class="co2-fill"></div>
+                            </div>
+                        </div>
+
+                        <div class="metric">
+                            <span class="metric-label">Occupancy</span>
+                            <strong id="occupancy-${room}" class="metric-value">–</strong>
+                        </div>
+                    </div>
+
+                    <div class="actuators">
+                        ${actuatorHtml(room, "heating", "Heating")}
+                        ${actuatorHtml(room, "ventilation", "Ventilation")}
+                        ${actuatorHtml(room, "lights", "Lights")}
+                    </div>
+                </div>
+            </article>
+        `;
+    }
+
+    function actuatorHtml(room, actuator, label) {
+        return `
+            <div id="${actuator}-card-${room}" class="actuator">
+                <span class="actuator-name">${label}</span>
+                <strong class="actuator-state">
+                    <span class="actuator-indicator"></span>
+                    <span id="${actuator}-${room}">OFF</span>
+                </strong>
+            </div>
+        `;
+    }
+
+    function setupDashboard() {
+        document.getElementById("room-dashboard").innerHTML =
+            ROOMS.map(roomDashboardHtml).join("");
+    }
+
+    function setText(id, text) {
+        const element = document.getElementById(id);
+        if (element) element.textContent = text;
+    }
+
+    function updateActuator(room, name, enabled) {
+        const card = document.getElementById(`${name}-card-${room}`);
+        const label = document.getElementById(`${name}-${room}`);
+
+        if (!card || !label) return;
+
+        card.classList.toggle("active", enabled === true);
+        label.textContent = enabled ? "ON" : "OFF";
+    }
+
+    function updateCo2Bar(room, co2) {
+        const bar = document.getElementById(`co2-bar-${room}`);
+        if (!bar || co2 === null) return;
+
+        bar.style.width = `${Math.max(0, Math.min(100, co2 / 16))}%`;
+
+        if (co2 > 1200) bar.style.background = "var(--red)";
+        else if (co2 > 900) bar.style.background = "var(--orange)";
+        else bar.style.background = "var(--green)";
+    }
+
+    function updateRoomDashboard(room, topics) {
+        const base = `building/main/room/${room}`;
+
+        const temperature = getValue(topics, `${base}/sensor/temperature`, "temperature_c");
+        const humidity = getValue(topics, `${base}/sensor/humidity`, "humidity_percent");
+        const co2 = getValue(topics, `${base}/sensor/co2`, "co2_ppm");
+        const occupied = getValue(topics, `${base}/sensor/occupancy`, "occupied");
+
+        const heating = getValue(topics, `${base}/actuator/heating/state`, "enabled", false);
+        const ventilation = getValue(topics, `${base}/actuator/ventilation/state`, "enabled", false);
+        const lights = getValue(topics, `${base}/actuator/lights/state`, "enabled", false);
+
+        const availability = getValue(
+            topics,
+            `building/main/device/actuator-${room}/availability`,
+            "status",
+            "unknown"
+        );
+
+        setText(`temperature-${room}`, temperature !== null ? `${temperature} °C` : "– °C");
+        setText(`humidity-${room}`, humidity !== null ? `${humidity} %` : "– %");
+        setText(`co2-${room}`, co2 !== null ? `${co2} ppm` : "– ppm");
+        setText(`occupancy-${room}`, occupied === null ? "–" : occupied ? "Present" : "Empty");
+
+        updateCo2Bar(room, co2);
+        updateActuator(room, "heating", heating);
+        updateActuator(room, "ventilation", ventilation);
+        updateActuator(room, "lights", lights);
+
+        setText(`availability-${room}`, String(availability).toUpperCase());
+
+        const dot = document.getElementById(`availability-dot-${room}`);
+        dot.classList.toggle("online", availability === "online");
+        dot.classList.toggle("offline", availability === "offline");
+    }
+
+    function updateEvents(events) {
+        const eventList = document.getElementById("event-list");
+
+        const content = events
+            .slice(-20)
+            .reverse()
+            .map(event => {
+                const time = new Date(event.timestamp).toLocaleTimeString();
+
+                return `
+                    <div class="event">
+                        <strong>${escapeHtml(event.message_type)}</strong>
+                        — ${escapeHtml(event.device_id)}
+                        <div class="event-time">
+                            ${time} · ${escapeHtml(JSON.stringify(event.value))}
+                        </div>
+                    </div>
+                `;
+            })
+            .join("");
+
+        eventList.innerHTML = content || `<p class="empty">No events received yet.</p>`;
+    }
+
+    async function refreshDashboard() {
+        try {
+            const [stateResponse, eventsResponse] = await Promise.all([
+                fetch("/api/state"),
+                fetch("/api/events")
+            ]);
+
+            if (!stateResponse.ok || !eventsResponse.ok) {
+                throw new Error("Dashboard API unavailable");
+            }
+
+            const state = await stateResponse.json();
+            const events = await eventsResponse.json();
+
+            ROOMS.forEach(room => updateRoomDashboard(room, state.topics || {}));
+            updateEvents(events);
+
+            document.getElementById("connection-dot").className = "dot online";
+            setText("connection-text", "MQTT dashboard online");
+        } catch (error) {
+            document.getElementById("connection-dot").className = "dot offline";
+            setText("connection-text", "Dashboard connection unavailable");
+        }
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /* Devices                                                                */
+    /* ---------------------------------------------------------------------- */
+
+    const typeOptions = {
+        sensor: [
+            ["temperature", "Temperature"],
+            ["humidity", "Humidity"],
+            ["co2", "CO₂"],
+            ["occupancy", "Occupancy"]
+        ],
+        actuator: [
+            ["heating", "Heating"],
+            ["ventilation", "Ventilation"],
+            ["lights", "Lights"]
+        ]
+    };
+
+    function updateDeviceTypeOptions() {
+        const kind = document.getElementById("device-kind").value;
+        const type = document.getElementById("device-type");
+
+        type.innerHTML = typeOptions[kind]
+            .map(([value, label]) => `<option value="${value}">${label}</option>`)
+            .join("");
+    }
+
+    document.getElementById("device-kind").addEventListener("change", updateDeviceTypeOptions);
+
+    document.getElementById("device-form").addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const name = document.getElementById("device-name").value.trim();
+        const roomId = document.getElementById("device-room").value;
+        const kind = document.getElementById("device-kind").value;
+        const deviceType = document.getElementById("device-type").value;
+
+        if (!name) return;
+
+        const response = await fetch("/api/devices", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name,
+                room_id: roomId,
+                kind,
+                device_type: deviceType
+            })
+        });
+
+        if (!response.ok) {
+            alert(`Could not add device: ${await response.text()}`);
+            return;
+        }
+
+        document.getElementById("device-form").reset();
+        updateDeviceTypeOptions();
+        await loadDevices();
+    });
+
+    async function loadDevices() {
+        try {
+            const response = await fetch("/api/devices");
+            if (!response.ok) throw new Error("Could not load devices");
+
+            devices = await response.json();
+            renderDevices();
+        } catch (error) {
+            document.getElementById("device-list").innerHTML =
+                `<p class="empty">Could not load registered devices.</p>`;
+        }
+    }
+
+    function renderDevices() {
+        const list = document.getElementById("device-list");
+
+        if (!devices.length) {
+            list.innerHTML = `<p class="empty">No dynamic devices have been added yet.</p>`;
+            return;
+        }
+
+        list.innerHTML = devices.map(device => `
+            <div class="device-item">
+                <div>
+                    <div class="device-title">
+                        <span class="badge ${device.kind}">${escapeHtml(device.kind)}</span>
+                        ${escapeHtml(device.name)}
+                    </div>
+
+                    <div class="device-topic">
+                        ${escapeHtml(device.room_id)} · ${escapeHtml(device.device_type)}<br>
+                        ${escapeHtml(device.mqtt_topic)}
+                    </div>
+                </div>
+
+                <button class="danger small" onclick="deleteDevice('${device.id}')">
+                    Delete
+                </button>
+            </div>
+        `).join("");
+    }
+
+    async function deleteDevice(deviceId) {
+        if (!confirm("Delete this device? Existing blueprint nodes may become invalid.")) {
+            return;
+        }
+
+        const response = await fetch(`/api/devices/${deviceId}`, {
+            method: "DELETE"
+        });
+
+        if (!response.ok) {
+            alert(`Could not delete device: ${await response.text()}`);
+            return;
+        }
+
+        await loadDevices();
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /* Blueprint storage                                                      */
+    /* ---------------------------------------------------------------------- */
+
+    async function loadBlueprints() {
+        await loadDevices();
+
+        try {
+            const response = await fetch("/api/blueprints");
+            if (!response.ok) throw new Error("Could not load scripts");
+
+            blueprints = await response.json();
+
+            if (activeBlueprint) {
+                activeBlueprint = blueprints.find(
+                    blueprint => blueprint.id === activeBlueprint.id
+                ) || null;
+            }
+
+            if (!activeBlueprint && blueprints.length) {
+                activeBlueprint = blueprints[0];
+            }
+
+            renderBlueprintList();
+            renderBlueprintEditor();
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    document.getElementById("create-blueprint-button").addEventListener("click", async () => {
+        const input = document.getElementById("new-blueprint-name");
+        const name = input.value.trim();
+
+        if (!name) {
+            alert("Enter a script name first.");
+            return;
+        }
+
+        const response = await fetch("/api/blueprints", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name })
+        });
+
+        if (!response.ok) {
+            alert(`Could not create script: ${await response.text()}`);
+            return;
+        }
+
+        activeBlueprint = await response.json();
+        input.value = "";
+
+        await loadBlueprints();
+    });
+
+    function renderBlueprintList() {
+        const list = document.getElementById("blueprint-list");
+
+        if (!blueprints.length) {
+            list.innerHTML = `<p class="empty">Create your first automation script.</p>`;
+            return;
+        }
+
+        list.innerHTML = blueprints.map(blueprint => `
+            <div
+                class="blueprint-item ${activeBlueprint?.id === blueprint.id ? "active" : ""}"
+                onclick="selectBlueprint('${blueprint.id}')"
+            >
+                <div>
+                    <strong>${escapeHtml(blueprint.name)}</strong><br>
+                    <span class="help">${blueprint.nodes.length} nodes · ${blueprint.edges.length} links</span>
+                </div>
+
+                <button
+                    class="danger small"
+                    onclick="event.stopPropagation(); deleteBlueprint('${blueprint.id}')"
+                >
+                    ×
+                </button>
+            </div>
+        `).join("");
+    }
+
+    function selectBlueprint(id) {
+        activeBlueprint = blueprints.find(blueprint => blueprint.id === id) || null;
+        selectedNodeId = null;
+        pendingConnection = null;
+
+        renderBlueprintList();
+        renderBlueprintEditor();
+    }
+
+    async function deleteBlueprint(id) {
+        if (!confirm("Delete this blueprint script?")) return;
+
+        const response = await fetch(`/api/blueprints/${id}`, {
+            method: "DELETE"
+        });
+
+        if (!response.ok) {
+            alert(`Could not delete script: ${await response.text()}`);
+            return;
+        }
+
+        if (activeBlueprint?.id === id) {
+            activeBlueprint = null;
+        }
+
+        await loadBlueprints();
+    }
+
+    document.getElementById("save-blueprint-button").addEventListener("click", saveBlueprint);
+
+    async function saveBlueprint() {
+        if (!activeBlueprint) {
+            alert("Create or select a script first.");
+            return;
+        }
+
+        const response = await fetch(`/api/blueprints/${activeBlueprint.id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(activeBlueprint)
+        });
+
+        if (!response.ok) {
+            alert(`Could not save script: ${await response.text()}`);
+            return;
+        }
+
+        await loadBlueprints();
+        alert("Blueprint saved.");
+    }
+
+    document.getElementById("clear-blueprint-button").addEventListener("click", () => {
+        if (!activeBlueprint) return;
+        if (!confirm("Remove all nodes and connections from this script?")) return;
+
+        activeBlueprint.nodes = [];
+        activeBlueprint.edges = [];
+        selectedNodeId = null;
+        renderBlueprintEditor();
+    });
+
+    document.getElementById("delete-selected-node-button").addEventListener("click", () => {
+        if (!activeBlueprint || !selectedNodeId) return;
+
+        activeBlueprint.nodes = activeBlueprint.nodes.filter(
+            node => node.id !== selectedNodeId
+        );
+
+        activeBlueprint.edges = activeBlueprint.edges.filter(
+            edge => edge.source !== selectedNodeId && edge.target !== selectedNodeId
+        );
+
+        selectedNodeId = null;
+        renderBlueprintEditor();
+    });
+
+    /* ---------------------------------------------------------------------- */
+    /* Blueprint nodes                                                        */
+    /* ---------------------------------------------------------------------- */
+
+    function uniqueId(prefix) {
+        return `${prefix}-${crypto.randomUUID()}`;
+    }
+
+    function createNode(nodeType) {
+        if (!activeBlueprint) {
+            alert("Create or select a blueprint first.");
+            return;
+        }
+
+        const defaults = {
+            sensor: { device_id: "" },
+            actuator: { device_id: "" },
+            constant_number: { value: 1000 },
+            constant_boolean: { value: true },
+            compare_greater: {},
+            compare_less: {},
+            boolean_and: {},
+            boolean_or: {}
+        };
+
+        const node = {
+            id: uniqueId(nodeType),
+            node_type: nodeType,
+            position: {
+                x: 180 + activeBlueprint.nodes.length * 25,
+                y: 120 + activeBlueprint.nodes.length * 25
+            },
+            data: defaults[nodeType] || {}
+        };
+
+        activeBlueprint.nodes.push(node);
+        selectedNodeId = node.id;
+        renderBlueprintEditor();
+    }
+
+    document.querySelectorAll("[data-node-type]").forEach(button => {
+        button.addEventListener("click", () => createNode(button.dataset.nodeType));
+    });
+
+    function getNodeTitle(node) {
+        const titles = {
+            sensor: "Sensor Input",
+            actuator: "Actuator Output",
+            constant_number: "Number Constant",
+            constant_boolean: "Boolean Constant",
+            compare_greater: "Greater Than (A > B)",
+            compare_less: "Less Than (A < B)",
+            boolean_and: "Boolean AND",
+            boolean_or: "Boolean OR"
+        };
+
+        return titles[node.node_type] || node.node_type;
+    }
+
+    function getNodeCategory(node) {
+        if (node.node_type === "sensor") return "sensor";
+        if (node.node_type === "actuator") return "actuator";
+        return "logic";
+    }
+
+    function pinHtml(node, direction, handle, type, label) {
+        return `
+            <div class="pin-row ${direction}">
+                ${direction === "input"
+                    ? `<span
+                        class="pin input ${type}"
+                        data-node-id="${node.id}"
+                        data-handle="${handle}"
+                        data-direction="input"
+                        data-type="${type}"
+                    ></span>`
+                    : ""
+                }
+
+                <span>${label}<span class="port-type">${type}</span></span>
+
+                ${direction === "output"
+                    ? `<span
+                        class="pin output ${type}"
+                        data-node-id="${node.id}"
+                        data-handle="${handle}"
+                        data-direction="output"
+                        data-type="${type}"
+                    ></span>`
+                    : ""
+                }
+            </div>
+        `;
+    }
+
+    function nodeContentHtml(node) {
+        const sensorDevices = devices.filter(device => device.kind === "sensor");
+        const actuatorDevices = devices.filter(device => device.kind === "actuator");
+
+        if (node.node_type === "sensor") {
+            return `
+                <select
+                    onchange="updateNodeDevice('${node.id}', this.value)"
+                    title="Select sensor"
+                >
+                    <option value="">Select sensor …</option>
+                    ${sensorDevices.map(device => `
+                        <option
+                            value="${device.id}"
+                            ${node.data.device_id === device.id ? "selected" : ""}
+                        >
+                            ${escapeHtml(device.name)} (${escapeHtml(device.room_id)})
+                        </option>
+                    `).join("")}
+                </select>
+
+                ${pinHtml(node, "output", "value", getSensorDataType(node), "Value")}
+            `;
+        }
+
+        if (node.node_type === "actuator") {
+            return `
+                ${pinHtml(node, "input", "enabled", "boolean", "Enabled")}
+
+                <select
+                    onchange="updateNodeDevice('${node.id}', this.value)"
+                    title="Select actuator"
+                >
+                    <option value="">Select actuator …</option>
+                    ${actuatorDevices.map(device => `
+                        <option
+                            value="${device.id}"
+                            ${node.data.device_id === device.id ? "selected" : ""}
+                        >
+                            ${escapeHtml(device.name)} (${escapeHtml(device.room_id)})
+                        </option>
+                    `).join("")}
+                </select>
+            `;
+        }
+
+        if (node.node_type === "constant_number") {
+            return `
+                <input
+                    type="number"
+                    value="${Number(node.data.value ?? 0)}"
+                    onchange="updateNodeValue('${node.id}', this.valueAsNumber)"
+                >
+                ${pinHtml(node, "output", "value", "number", "Value")}
+            `;
+        }
+
+        if (node.node_type === "constant_boolean") {
+            return `
+                <select onchange="updateNodeValue('${node.id}', this.value === 'true')">
+                    <option value="true" ${node.data.value === true ? "selected" : ""}>True</option>
+                    <option value="false" ${node.data.value === false ? "selected" : ""}>False</option>
+                </select>
+                ${pinHtml(node, "output", "value", "boolean", "Value")}
+            `;
+        }
+
+        if (
+            node.node_type === "compare_greater" ||
+            node.node_type === "compare_less"
+        ) {
+            return `
+                ${pinHtml(node, "input", "a", "number", "A")}
+                ${pinHtml(node, "input", "b", "number", "B")}
+                ${pinHtml(node, "output", "result", "boolean", "Result")}
+            `;
+        }
+
+        if (
+            node.node_type === "boolean_and" ||
+            node.node_type === "boolean_or"
+        ) {
+            return `
+                ${pinHtml(node, "input", "a", "boolean", "A")}
+                ${pinHtml(node, "input", "b", "boolean", "B")}
+                ${pinHtml(node, "output", "result", "boolean", "Result")}
+            `;
+        }
+
+        return "";
+    }
+
+    function getSensorDataType(node) {
+        const device = devices.find(device => device.id === node.data.device_id);
+
+        if (!device) return "number";
+
+        return device.device_type === "occupancy" ? "boolean" : "number";
+    }
+
+    function renderBlueprintEditor() {
+        nodeLayer.innerHTML = "";
+        edgeLayer.innerHTML = "";
+        pendingConnection = null;
+
+        const info = document.getElementById("selected-blueprint-info");
+
+        if (!activeBlueprint) {
+            info.innerHTML = "No script selected.";
+            return;
+        }
+
+        info.innerHTML = `
+            <strong>${escapeHtml(activeBlueprint.name)}</strong><br>
+            ${activeBlueprint.nodes.length} nodes · ${activeBlueprint.edges.length} connections<br>
+            Status: ${activeBlueprint.enabled ? "Enabled" : "Disabled"}
+        `;
+
+        activeBlueprint.nodes.forEach(node => {
+            const element = document.createElement("div");
+
+            element.className = `blueprint-node ${
+                selectedNodeId === node.id ? "selected" : ""
+            }`;
+
+            element.dataset.nodeId = node.id;
+            element.style.left = `${node.position.x}px`;
+            element.style.top = `${node.position.y}px`;
+
+            element.innerHTML = `
+                <div class="node-header ${getNodeCategory(node)}">
+                    ${escapeHtml(getNodeTitle(node))}
+                </div>
+                <div class="node-content">
+                    ${nodeContentHtml(node)}
+                </div>
+            `;
+
+            element.addEventListener("mousedown", event => {
+                if (event.target.closest(".pin, input, select")) return;
+                selectedNodeId = node.id;
+                renderBlueprintEditor();
+            });
+
+            const header = element.querySelector(".node-header");
+            header.addEventListener("pointerdown", event => startNodeDrag(event, node));
+
+            nodeLayer.appendChild(element);
+        });
+
+        document.querySelectorAll(".pin").forEach(pin => {
+            pin.addEventListener("click", event => {
+                event.stopPropagation();
+                handlePinClick(pin);
+            });
+        });
+
+        renderEdges();
+    }
+
+    function updateNodeDevice(nodeId, deviceId) {
+        const node = activeBlueprint?.nodes.find(node => node.id === nodeId);
+        if (!node) return;
+
+        node.data.device_id = deviceId;
+
+        // Connections may become invalid when changing occupancy/non-occupancy sensor type.
+        renderBlueprintEditor();
+    }
+
+    function updateNodeValue(nodeId, value) {
+        const node = activeBlueprint?.nodes.find(node => node.id === nodeId);
+        if (!node) return;
+
+        node.data.value = value;
+    }
+
+    function startNodeDrag(event, node) {
+        event.preventDefault();
+
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const initialX = node.position.x;
+        const initialY = node.position.y;
+
+        function onMove(moveEvent) {
+            node.position.x = Math.max(0, initialX + moveEvent.clientX - startX);
+            node.position.y = Math.max(0, initialY + moveEvent.clientY - startY);
+
+            const element = document.querySelector(`[data-node-id="${node.id}"]`);
+            if (element) {
+                element.style.left = `${node.position.x}px`;
+                element.style.top = `${node.position.y}px`;
+            }
+
+            renderEdges();
+        }
+
+        function onUp() {
+            window.removeEventListener("pointermove", onMove);
+            window.removeEventListener("pointerup", onUp);
+        }
+
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onUp);
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /* Blueprint connections                                                  */
+    /* ---------------------------------------------------------------------- */
+
+    function handlePinClick(pin) {
+        const pinData = {
+            nodeId: pin.dataset.nodeId,
+            handle: pin.dataset.handle,
+            direction: pin.dataset.direction,
+            type: pin.dataset.type
+        };
+
+        if (!pendingConnection) {
+            if (pinData.direction !== "output") {
+                alert("Start a connection from an output pin.");
+                return;
+            }
+
+            pendingConnection = pinData;
+            pin.classList.add("connecting");
+            return;
+        }
+
+        document.querySelectorAll(".pin.connecting").forEach(element => {
+            element.classList.remove("connecting");
+        });
+
+        const source = pendingConnection;
+        pendingConnection = null;
+
+        if (pinData.direction !== "input") {
+            alert("Finish the connection at an input pin.");
+            return;
+        }
+
+        if (source.nodeId === pinData.nodeId) {
+            alert("A node cannot connect to itself.");
+            return;
+        }
+
+        if (source.type !== pinData.type) {
+            alert(
+                `Invalid connection: ${source.type} output cannot connect to ${pinData.type} input.`
+            );
+            return;
+        }
+
+        // Each input can only have one connection.
+        activeBlueprint.edges = activeBlueprint.edges.filter(edge => !(
+            edge.target === pinData.nodeId &&
+            edge.target_handle === pinData.handle
+        ));
+
+        activeBlueprint.edges.push({
+            id: uniqueId("edge"),
+            source: source.nodeId,
+            source_handle: source.handle,
+            target: pinData.nodeId,
+            target_handle: pinData.handle
+        });
+
+        renderBlueprintEditor();
+    }
+
+    function renderEdges() {
+        edgeLayer.innerHTML = "";
+
+        if (!activeBlueprint) return;
+
+        activeBlueprint.edges.forEach(edge => {
+            const source = document.querySelector(
+                `.pin[data-node-id="${edge.source}"][data-handle="${edge.source_handle}"][data-direction="output"]`
+            );
+
+            const target = document.querySelector(
+                `.pin[data-node-id="${edge.target}"][data-handle="${edge.target_handle}"][data-direction="input"]`
+            );
+
+            if (!source || !target) return;
+
+            const sourcePosition = getCanvasPosition(source);
+            const targetPosition = getCanvasPosition(target);
+
+            const controlOffset = Math.max(
+                70,
+                Math.abs(targetPosition.x - sourcePosition.x) * 0.45
+            );
+
+            const path = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "path"
+            );
+
+            const sourceType = source.dataset.type;
+
+            path.setAttribute(
+                "d",
+                `M ${sourcePosition.x} ${sourcePosition.y}
+                 C ${sourcePosition.x + controlOffset} ${sourcePosition.y},
+                   ${targetPosition.x - controlOffset} ${targetPosition.y},
+                   ${targetPosition.x} ${targetPosition.y}`
+            );
+
+            path.setAttribute(
+                "class",
+                `edge ${sourceType === "boolean" ? "boolean" : ""}`
+            );
+
+            path.style.pointerEvents = "stroke";
+
+            path.addEventListener("click", () => {
+                if (!confirm("Delete this connection?")) return;
+
+                activeBlueprint.edges = activeBlueprint.edges.filter(
+                    currentEdge => currentEdge.id !== edge.id
+                );
+
+                renderBlueprintEditor();
+            });
+
+            edgeLayer.appendChild(path);
+        });
+    }
+
+    function getCanvasPosition(element) {
+        const canvas = document.getElementById("blueprint-canvas");
+        const canvasRect = canvas.getBoundingClientRect();
+        const rect = element.getBoundingClientRect();
+
+        return {
+            x: rect.left - canvasRect.left + rect.width / 2,
+            y: rect.top - canvasRect.top + rect.height / 2
+        };
+    }
+
+    window.addEventListener("resize", renderEdges);
+
+    /* ---------------------------------------------------------------------- */
+    /* Initialisation                                                         */
+    /* ---------------------------------------------------------------------- */
+
+    setupDashboard();
+    updateDeviceTypeOptions();
+    refreshDashboard();
+    loadDevices();
+
+    window.setInterval(refreshDashboard, 2000);
+</script>
+</body>
+</html>
