@@ -2771,35 +2771,35 @@
 
                 <div class="room-edit-grid">
                     <div>
-                        <label>Name</label>
+                        <label for="room-name-${room.id}">Name</label>
                         <input id="room-name-${room.id}" value="${escapeHtml(room.name)}">
                     </div>
 
                     <div>
-                        <label>Colour</label>
+                        <label for="room-color-${room.id}">Colour</label>
                         <input type="color" id="room-color-${room.id}" value="${escapeHtml(room.color)}">
                     </div>
 
                     <div>
-                        <label>Width (m)</label>
+                        <label for="room-width-${room.id}">Width (m)</label>
                         <input type="number" step="0.5" min="2" max="60"
                                id="room-width-${room.id}" value="${room.width}">
                     </div>
 
                     <div>
-                        <label>Depth (m)</label>
+                        <label for="room-depth-${room.id}">Depth (m)</label>
                         <input type="number" step="0.5" min="2" max="60"
                                id="room-depth-${room.id}" value="${room.depth}">
                     </div>
 
                     <div>
-                        <label>Height (m)</label>
+                        <label for="room-height-${room.id}">Height (m)</label>
                         <input type="number" step="0.1" min="2" max="10"
                                id="room-height-${room.id}" value="${room.height}">
                     </div>
 
                     <div>
-                        <label>Kind</label>
+                        <label for="room-kind-${room.id}">Kind</label>
                         <select id="room-kind-${room.id}">
                             <option value="office" ${room.kind === "office" ? "selected" : ""}>Office</option>
                             <option value="garage" ${room.kind === "garage" ? "selected" : ""}>Garage</option>
@@ -2932,6 +2932,16 @@
     let floorRoot = null;
 
     let walkMode = false;
+
+    // Walk input must also work WITHOUT pointer lock: when the browser
+    // refuses lock (permission, cooldown, embedded view), fallbackLook
+    // enables WASD movement + hold-the-button drag-to-look instead.
+    let fallbackLook = false;
+    let dragLooking = false;
+    let dragLastX = 0;
+    let dragLastY = 0;
+    const dragEuler = new THREE.Euler(0, 0, 0, "YXZ");
+
     let builtKey = "";
     let floorKey = "";
     let bounds = { x1: -20, z1: -20, x2: 20, z2: 20 };
@@ -3039,14 +3049,17 @@
         // lock with Esc, rejecting through the promise that requestPointerLock()
         // returns. THREE discards that promise (and only warns on the older
         // pointerlockerror path), so handle both here: swallow the rejection
-        // and keep a retry hint on screen — the next click on the view always
-        // retries cleanly.
+        // and switch to drag-to-look so walking works even when pointer lock
+        // is unavailable entirely.
         const defaultHint = hintBox.innerHTML;
         const showLockRetryHint = () => {
+            fallbackLook = true;
             hintBox.classList.remove("hidden");
+            crosshair.classList.remove("hidden");
             hintBox.innerHTML =
-                "Mouse lock was refused — click the view again in a moment. " +
-                "Browsers block re-locking right after <strong>Esc</strong>.";
+                "Pointer lock unavailable — <strong>hold the mouse button and drag</strong> to look around. " +
+                "<strong>W A S D</strong> moves, <strong>E</strong> interacts. " +
+                "Click the view once to retry mouse lock.";
         };
 
         fp = new PointerLockControls(camera, renderer.domElement);
@@ -3062,6 +3075,8 @@
         renderer.domElement.addEventListener("pointerlockerror", showLockRetryHint);
 
         fp.addEventListener("lock", () => {
+            fallbackLook = false;
+            dragLooking = false;
             hintBox.innerHTML = defaultHint;
             crosshair.classList.remove("hidden");
             hintBox.classList.add("hidden");
@@ -3075,6 +3090,36 @@
 
         container.addEventListener("click", () => {
             if (walkMode && !fp.isLocked) fp.lock();
+        });
+
+        // Pointer-lock-free fallback look: hold the left button and drag.
+        container.addEventListener("mousedown", event => {
+            if (!walkMode || fp.isLocked || !fallbackLook || event.button !== 0) return;
+            dragLooking = true;
+            dragLastX = event.clientX;
+            dragLastY = event.clientY;
+        });
+
+        window.addEventListener("mouseup", () => {
+            dragLooking = false;
+        });
+
+        window.addEventListener("mousemove", event => {
+            if (!dragLooking || fp.isLocked) return;
+
+            const dx = event.clientX - dragLastX;
+            const dy = event.clientY - dragLastY;
+            dragLastX = event.clientX;
+            dragLastY = event.clientY;
+
+            // Same YXZ euler math PointerLockControls uses internally.
+            dragEuler.setFromQuaternion(camera.quaternion);
+            dragEuler.y -= dx * 0.003;
+            dragEuler.x = Math.max(
+                -Math.PI / 2,
+                Math.min(Math.PI / 2, dragEuler.x - dy * 0.003)
+            );
+            camera.quaternion.setFromEuler(dragEuler);
         });
 
         document.getElementById("sim-mode-walk").addEventListener("click", () => {
@@ -3091,8 +3136,12 @@
 
         document.getElementById("sim-mode-orbit").addEventListener("click", () => {
             walkMode = false;
+            fallbackLook = false;
+            dragLooking = false;
             if (fp.isLocked) fp.unlock();
             orbit.enabled = true;
+            crosshair.classList.add("hidden");
+            hintBox.innerHTML = defaultHint;
             hintBox.classList.remove("hidden");
 
             // Fly back to the doll-house overview.
@@ -3108,7 +3157,13 @@
 
             keys[event.code] = true;
 
-            if (event.code === "KeyE" && fp.isLocked && !event.repeat) {
+            if (
+                event.code === "KeyE" &&
+                !event.repeat &&
+                walkMode &&
+                isVisible() &&
+                (fp.isLocked || fallbackLook)
+            ) {
                 interact();
             }
         });
@@ -3118,6 +3173,12 @@
         });
 
         window.addEventListener("resize", resize);
+
+        // Never leave keys stuck down when the tab loses focus mid-walk.
+        window.addEventListener("blur", () => {
+            keysClear();
+            dragLooking = false;
+        });
 
         rebuild();
         requestAnimationFrame(animate);
@@ -3427,6 +3488,7 @@
             disposeGroup(floorRoot);
             rooms.clear();
             colliders = [];
+            builtKey = "";
             return;
         }
 
@@ -3443,7 +3505,9 @@
         const floor = floors.find(entry => entry.id === floorSelect.value) ?? floors[0];
         floorSelect.value = floor.id;
 
-        builtKey = `${floor.id}|${JSON.stringify(floor.rooms)}`;
+        // Must be the SAME format buildKey() produces, or animate() rebuilds
+        // (and resets the camera) on every single frame.
+        builtKey = buildKey();
 
         disposeGroup(floorRoot);
         rooms.clear();
@@ -3620,7 +3684,7 @@
     function updatePresence() {
         let roomId = null;
 
-        if (isVisible() && walkMode && fp.isLocked) {
+        if (isVisible() && walkMode && (fp.isLocked || fallbackLook)) {
             const ref = containingRoom(camera.position.x, camera.position.z);
             roomId = ref?.room.id ?? null;
         }
@@ -3733,7 +3797,7 @@
         if (promptTimer > 0) return;
         promptTimer = 0.2;
 
-        if (!walkMode || !fp.isLocked) {
+        if (!walkMode || !(fp.isLocked || fallbackLook)) {
             promptBox.classList.add("hidden");
             nearestTarget = null;
             return;
@@ -3801,7 +3865,7 @@
             rebuild();
         }
 
-        if (walkMode && fp.isLocked) {
+        if (walkMode && (fp.isLocked || fallbackLook)) {
             movePlayer(delta);
         }
 
@@ -3814,6 +3878,19 @@
 
         renderer.render(scene, camera);
     }
+
+    // Debug/testing surface: read walk state from the console or tests.
+    SIM.debug = () => ({
+        renderer: !!renderer,
+        walkMode,
+        fallbackLook,
+        locked: fp ? fp.isLocked : false,
+        builtKey,
+        floorOptions: floorSelect.options.length,
+        camera: camera
+            ? camera.position.toArray().map(value => Math.round(value * 100) / 100)
+            : null
+    });
 
     // Registered at module load, NOT inside ensureInit(): the dashboard tab
     // handler fires SIM.onTabVisible on the first visit to the 3D tab and
